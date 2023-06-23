@@ -1,0 +1,18 @@
+1. Setup the environment
+
+source <Vitis_install_path>/Vitis/2021.2/settings64.sh; 
+source /opt/xilinx/xrt/setup.sh;
+
+2. Build for hardware emulation
+
+make run TARGET=hw_emu PLATFORM=xilinx_u280_xdma_201920_3 all
+
+3. Build for the hardware
+
+make TARGET=hw PLATFORM=xilinx_u280_xdma_201920_3 all
+
+3-1. Run application
+- put SAT instances in 'test' folder
+$ <exe file> <XCLBIN File> <fileName> <seed> <maxFlips> <k> <r>
+
+ex) $ fsat.exe fsat.xclbin k3-r4.26-v600-c2556-043.cnf 0 10000000 16 640
