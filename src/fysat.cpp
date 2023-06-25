@@ -567,7 +567,7 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 }
 
 
-void vadd(hls::vector<short, SDSIZE> ol_len_off[], hls::vector<short, SDSIZE> cls_len_off[],
+void fysat(hls::vector<short, SDSIZE> ol_len_off[], hls::vector<short, SDSIZE> cls_len_off[],
 		hls::vector<int, DSIZE> ClauseList[], hls::vector<int, DSIZE> VarsOccList[],
 		int numVars, int numClauses, int s, int k, int maxFlip, unsigned long long flipcnt[]) {
 

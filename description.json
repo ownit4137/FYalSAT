@@ -41,16 +41,16 @@
         {
             "accelerators": [
                 {
-                    "name": "vadd", 
-                    "location": "src/vadd.cpp"
+                    "name": "fysat", 
+                    "location": "src/fysat.cpp"
                 }
             ], 
-            "name": "vadd"
+            "name": "fysat"
         }
     ],
     "launch": [
         {
-            "cmd_args": "BUILD/vadd.xclbin", 
+            "cmd_args": "BUILD/fysat.xclbin", 
             "name": "generic launch for all flows"
         }
     ], 

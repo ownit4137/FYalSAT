@@ -48,11 +48,11 @@ include ./utils.mk
 TEMP_DIR := ./_x.$(TARGET).$(XSA)
 BUILD_DIR := ./build_dir.$(TARGET).$(XSA)
 
-LINK_OUTPUT := $(BUILD_DIR)/vadd.link.xclbin
+LINK_OUTPUT := $(BUILD_DIR)/fysat.link.xclbin
 PACKAGE_OUT = ./package.$(TARGET)
 
 VPP_PFLAGS := 
-CMD_ARGS = $(BUILD_DIR)/vadd.xclbin
+CMD_ARGS = $(BUILD_DIR)/fysat.xclbin
 CXXFLAGS += -I$(XILINX_XRT)/include -I$(XILINX_VIVADO)/include -Wall -O0 -g -std=c++1y
 LDFLAGS += -L$(XILINX_XRT)/lib -pthread -lOpenCL
 
@@ -71,45 +71,45 @@ LDFLAGS += -lrt -lstdc++
 VPP_FLAGS += --save-temps 
 
 
-EXECUTABLE = ./hello_world
+EXECUTABLE = ./fyalsat.exe
 EMCONFIG_DIR = $(TEMP_DIR)
 
 
-# CMD_ARGS = $(BUILD_DIR)/vadd.xclbin k7-r90-v60-c5267.cnf 19437907
-# CMD_ARGS = $(BUILD_DIR)/vadd.xclbin k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
-CMD_ARGS = $(BUILD_DIR)/vadd.xclbin p12-k7-001.cnf 0 50 16 640
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k7-r90-v60-c5267.cnf 19437907
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
+CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/p12-k7-001.cnf 0 50 16 640
 
-VPP_FLAGS += --connectivity.sp vadd_1.ol_len_off:HBM[1]
-VPP_FLAGS += --connectivity.sp vadd_1.cls_len_off:HBM[0]
-VPP_FLAGS += --connectivity.sp vadd_1.flipcnt:HBM[2]
-VPP_FLAGS += --connectivity.sp vadd_1.ClauseList:DDR[0]
-VPP_FLAGS += --connectivity.sp vadd_1.VarsOccList:DDR[1]
-# VPP_FLAGS += --connectivity.sp vadd_1.ol_len_off:DDR[0]
-# VPP_FLAGS += --connectivity.sp vadd_1.cls_len_off:DDR[1]
+VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:HBM[1]
+VPP_FLAGS += --connectivity.sp fysat_1.cls_len_off:HBM[0]
+VPP_FLAGS += --connectivity.sp fysat_1.flipcnt:HBM[2]
+VPP_FLAGS += --connectivity.sp fysat_1.ClauseList:DDR[0]
+VPP_FLAGS += --connectivity.sp fysat_1.VarsOccList:DDR[1]
+# VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:DDR[0]
+# VPP_FLAGS += --connectivity.sp fysat_1.cls_len_off:DDR[1]
 
 
 ############################## Setting Targets ##############################
 .PHONY: all clean cleanall docs emconfig
-all: check-platform check-device check-vitis $(EXECUTABLE) $(BUILD_DIR)/vadd.xclbin emconfig
+all: check-platform check-device check-vitis $(EXECUTABLE) $(BUILD_DIR)/fysat.xclbin emconfig
 
 .PHONY: host
 host: $(EXECUTABLE)
 
 .PHONY: build
-build: check-vitis check-device $(BUILD_DIR)/vadd.xclbin
+build: check-vitis check-device $(BUILD_DIR)/fysat.xclbin
 
 .PHONY: xclbin
 xclbin: build
 
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
-$(TEMP_DIR)/vadd.xo: src/vadd.cpp
+$(TEMP_DIR)/fysat.xo: src/fysat.cpp
 	mkdir -p $(TEMP_DIR)
-	v++ -c $(VPP_FLAGS) -t $(TARGET) --platform $(PLATFORM) -k vadd --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	v++ -c $(VPP_FLAGS) -t $(TARGET) --platform $(PLATFORM) -k fysat --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 
-$(BUILD_DIR)/vadd.xclbin: $(TEMP_DIR)/vadd.xo
+$(BUILD_DIR)/fysat.xclbin: $(TEMP_DIR)/fysat.xo
 	mkdir -p $(BUILD_DIR)
 	v++ -l $(VPP_FLAGS) $(VPP_LDFLAGS) -t $(TARGET) --platform $(PLATFORM) --temp_dir $(TEMP_DIR) -o'$(LINK_OUTPUT)' $(+)
-	v++ -p $(LINK_OUTPUT) $(VPP_FLAGS) -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/vadd.xclbin
+	v++ -p $(LINK_OUTPUT) $(VPP_FLAGS) -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/fysat.xclbin
 
 ############################## Setting Rules for Host (Building Host Executable) ##############################
 $(EXECUTABLE): $(HOST_SRCS) | check-xrt

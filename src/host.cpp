@@ -155,14 +155,14 @@ int main(int argc, char** argv) {
     std::string binaryFile = argv[1];
 
 	
-	std::string base = "/home/kcs/src/project_data/Vitis_Accel_Examples/fyalsat/test/";
+	// std::string base = "/home/kcs/src/project_data/Vitis_Accel_Examples/fyalsat/test/";
 	std::string fn(argv[2]);
-    std::string fileName(base + fn);
+    std::string fileName(fn);
 	std::string ss(argv[3]);
 	std::string fstr(argv[4]);
 	std::string kstr(argv[5]);
 	std::string rstr(argv[6]);
-	
+
 	randseed = stoi(ss);
 	if (randseed == 0) {
 		randseed = time(0);
@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
             std::cout << "Failed to program device[" << i << "] with xclbin file!\n";
         } else {
             std::cout << "Device[" << i << "]: program successful!\n";
-            OCL_CHECK(err, krnl_yalsat = cl::Kernel(program, "vadd", &err));
+            OCL_CHECK(err, krnl_yalsat = cl::Kernel(program, "fysat", &err));
             valid_device = true;
             break; // we break because we found a valid device
         }
