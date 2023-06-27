@@ -300,6 +300,7 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 	cost cost_partd[MAXNCLS / DSIZE + 1][DSIZE];
 	cls tl_XORed_partd[MAXNCLS / DSIZE + 1][DSIZE];
 #pragma HLS ARRAY_PARTITION variable=tl_XORed_partd complete dim=2
+#pragma HLS bind_storage variable=tl_XORed_partd impl=uram type=RAM_2P
 #pragma HLS ARRAY_PARTITION variable=cost_partd complete dim=2
 
 	int numOfUCs = 0;
@@ -308,7 +309,9 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 	cls UCB_partd_len[DSIZE];
 
 #pragma HLS ARRAY_PARTITION variable=UCB_partd complete dim=2
+#pragma HLS bind_storage variable=UCB_partd impl=uram type=RAM_2P
 #pragma HLS ARRAY_PARTITION variable=posInUCB complete dim=2
+#pragma HLS bind_storage variable=posInUCB impl=uram type=RAM_2P
 #pragma HLS ARRAY_PARTITION variable=UCB_partd_len complete dim=1
 
 	clength ol_len[MAXNLIT];		// char

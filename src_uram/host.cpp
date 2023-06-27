@@ -116,7 +116,7 @@ void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int,
 		int start = ol_len_off[v];
 
 		for (int i = 0; i < rlen; i++) {
-			int loc = VarsOccList[r * v + i]; 
+			int loc = VarsOccList[v * r + i]; 
 			waitlist[loc % DSIZE].push_back(loc);
 		}
 
@@ -157,14 +157,14 @@ int main(int argc, char** argv) {
     std::string binaryFile = argv[1];
 
 	
-	// std::string base = "/home/kcs/src/project_data/Vitis_Accel_Examples/fyalsat/test/";
+	// std::string base = "/home/kcs/src/project_data/Vitis_Accel_Examples/mm_0618/src/";
 	std::string fn(argv[2]);
     std::string fileName(fn);
 	std::string ss(argv[3]);
 	std::string fstr(argv[4]);
 	std::string kstr(argv[5]);
 	std::string rstr(argv[6]);
-
+	
 	randseed = stoi(ss);
 	if (randseed == 0) {
 		randseed = time(0);
@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
     cl::Kernel krnl_yalsat;
     cl::CommandQueue q;
     
-	std::vector<int, aligned_allocator<int>> ClauseList(DSSIZE, 0);
+    std::vector<int, aligned_allocator<int>> ClauseList(DSSIZE, 0);
 	std::vector<int, aligned_allocator<int>> VarsOccList(DSSIZE, 0);
 	std::vector<short, aligned_allocator<short>> cls_len_off(MAXNCLS, 0);
 	std::vector<short, aligned_allocator<short>> ol_len_off(MAXNLIT, 0);
@@ -287,6 +287,7 @@ int main(int argc, char** argv) {
 	double exec_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 	double exec_time_ext = std::chrono::duration_cast<std::chrono::nanoseconds>(end - estart).count();
 	unsigned long long flips;
+
 
 	// OCL_CHECK(err, err = q.enqueueMigrateMemObjects({b_ol_len_off}, CL_MIGRATE_MEM_OBJECT_HOST));
 
