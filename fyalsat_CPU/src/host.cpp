@@ -156,10 +156,12 @@ int main(int argc, char** argv) {
    
     std::string binaryFile = argv[1];
 
-	
-	// std::string base = "/home/kcs/src/project_data/Vitis_Accel_Examples/fyalsat/test/";
-	std::string fn(argv[2]);
-    std::string fileName(fn);
+	char the_path[256];
+	getcwd(the_path, 255);
+	strcat(the_path, "/");
+	strcat(the_path, argv[2]);
+
+    std::string fileName(the_path);
 	std::string ss(argv[3]);
 	std::string fstr(argv[4]);
 	std::string kstr(argv[5]);
