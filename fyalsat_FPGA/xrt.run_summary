@@ -1,26 +1,19 @@
 {
     "schema_version": {
         "major": "1",
-        "minor": "3",
+        "minor": "2",
         "patch": "0"
     },
     "generation": {
-        "this_file": "\/home\/kcs\/src\/project_data\/Vitis_Accel_Examples\/fyalsat\/xrt.run_summary",
+        "this_file": "\/home\/kcs\/src\/project_data\/Vitis_Accel_Examples\/fyalsat\/fyalsat_FPGA\/xrt.run_summary",
         "source": "vp",
-        "PID": "19441",
-        "timestamp": "1681718926727",
-        "flags": [
-            ""
-        ]
+        "PID": "1806",
+        "timestamp": "1689244014051"
     },
     "files": [
         {
-            "name": "device_trace_0.csv",
+            "name": "opencl_trace.csv",
             "type": "VP_TRACE"
-        },
-        {
-            "name": "summary.csv",
-            "type": "PROFILE_SUMMARY"
         }
     ]
 }

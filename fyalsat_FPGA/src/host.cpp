@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <omp.h>
+#include <unistd.h>
 
 #include "wsat_hls.h"
 
@@ -158,7 +159,7 @@ int main(int argc, char** argv) {
 
 	char the_path[256];
 	getcwd(the_path, 255);
-	strcat(the_path, "/");
+	strcat(the_path, "/../");
 	strcat(the_path, argv[2]);
 
     std::string fileName(the_path);
@@ -305,7 +306,7 @@ int main(int argc, char** argv) {
 		flips = maxFlip;
 	}
 	
-	double Mfs = (double)flips / exec_time * 1e-9;
+	double Mfs = (double)flips / (exec_time * 1e-9);
 
 	std::cout << "Time: " << std::setw(19) << exec_time*1e-9 << std::endl;
 	std::cout << "HW + CPU Time: " << std::setw(10) << exec_time_ext*1e-9 << std::endl;

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <omp.h>
+#include <unistd.h>
 
 #include "wsat_hls.h"
 
@@ -158,7 +159,7 @@ int main(int argc, char** argv) {
 
 	char the_path[256];
 	getcwd(the_path, 255);
-	strcat(the_path, "/");
+	strcat(the_path, "/../");
 	strcat(the_path, argv[2]);
 
     std::string fileName(the_path);
@@ -287,7 +288,6 @@ int main(int argc, char** argv) {
 	auto end = std::chrono::steady_clock::now();
 	std::cout << "Done.\n";
 	double exec_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-	double exec_time_ext = std::chrono::duration_cast<std::chrono::nanoseconds>(end - estart).count();
 	unsigned long long flips;
 
 	// OCL_CHECK(err, err = q.enqueueMigrateMemObjects({b_ol_len_off}, CL_MIGRATE_MEM_OBJECT_HOST));
@@ -305,10 +305,9 @@ int main(int argc, char** argv) {
 		flips = maxFlip;
 	}
 	
-	double Mfs = (double)flips / exec_time * 1e-9;
+	double Mfs = (double)flips / (exec_time * 1e-9);
 
 	std::cout << "Time: " << std::setw(19) << exec_time*1e-9 << std::endl;
-	std::cout << "HW + CPU Time: " << std::setw(10) << exec_time_ext*1e-9 << std::endl;
 	std::cout << "Flips: " << std::setw(18) << flips << std::endl;
 	std::cout << "flips/s: " << std::setw(16) << Mfs << std::endl;
 

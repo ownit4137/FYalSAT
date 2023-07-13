@@ -76,8 +76,8 @@ EMCONFIG_DIR = $(TEMP_DIR)
 
 
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k7-r90-v60-c5267.cnf 19437907
-# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
-CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/p12-k7-001.cnf 0 50 16 640
+CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
+#CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/p12-k7-001.cnf 0 50 16 640
 
 VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:HBM[1]
 VPP_FLAGS += --connectivity.sp fysat_1.cls_len_off:HBM[0]
