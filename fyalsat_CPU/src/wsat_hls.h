@@ -9,13 +9,15 @@
 #include <fstream>
 #include <string>
 
+// length data type change
+
 typedef int cls; 
 typedef int var; 
 typedef int bscore; 
-typedef int cost;
-typedef short length;
+typedef char cost;
+typedef int length;
 typedef short clength;
-typedef int ucbidx;
+typedef short ucbidx;
 
 // typedef ap_uint<22> cls;
 // typedef ap_int<20> var;
@@ -28,22 +30,19 @@ typedef int ucbidx;
 extern "C" {
 
 #define MAXFLIP 10000000
-#define UCBSIZE 8000 // multiple of 16
-#define MAXK 16 // 64 // multiple of 16
-#define MAXR 640 // 640 // multiple of 16
-#define MAXNCLS 16000 // multiple of 16
-#define MAXNVAR 1600 // multiple of 16
-
-// #define UCBSIZE 400000 // multiple of 16
-// #define MAXK 16 // 64 // multiple of 16
-// #define MAXR 16 // 640 // multiple of 16
-// #define MAXNCLS 3860016 // multiple of 16
-// #define MAXNVAR 1000016 // multiple of 16
+#define UCBSIZE 30000 // multiple of 16
+#define MAXK 32 // 64 // multiple of 16
+#define MAXR 14272 // 640 // multiple of 16
+#define MAXNCLS 630000 // multiple of 16
+#define MAXNVAR 2288 // multiple of 16
 #define MAXNLIT 2 * MAXNVAR
 #define GETPOS(L) (2*ABS(L)-(L<0)-1)	// -1(0) 1(1) -2(2) 2(3) -3(4) 3(5)
 #define ABS(a) (((a) < 0) ? (-a) : (a))
 #define DSIZE 16
-#define SDSIZE 32
+#define SDSIZE 16
+#define CDSIZE 32
+#define DSSIZE_C 1500000000
+#define DSSIZE 70000000
 
 }
 #endif

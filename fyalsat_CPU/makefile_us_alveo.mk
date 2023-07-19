@@ -68,16 +68,17 @@ LDFLAGS += -lrt -lstdc++
 
 ############################## Setting up Kernel Variables ##############################
 # Kernel compiler global settings
-VPP_FLAGS += --save-temps 
-
+VPP_FLAGS += --save-temps
 
 EXECUTABLE = ./fyalsat.exe
 EMCONFIG_DIR = $(TEMP_DIR)
 
 
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k7-r90-v60-c5267.cnf 19437907
-CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
-#CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/p12-k7-001.cnf 0 50 16 640
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/p12-k7-001.cnf 0 50 16 640
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin C3-2-31.cnf 1689359356 10000 16 15000
+CMD_ARGS = $(BUILD_DIR)/fysat.xclbin n_queens32.dimacs 1689498293 1000 32 640
 
 VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:HBM[1]
 VPP_FLAGS += --connectivity.sp fysat_1.cls_len_off:HBM[0]
@@ -111,9 +112,9 @@ $(BUILD_DIR)/fysat.xclbin: $(TEMP_DIR)/fysat.xo
 	v++ -l $(VPP_FLAGS) $(VPP_LDFLAGS) -t $(TARGET) --platform $(PLATFORM) --temp_dir $(TEMP_DIR) -o'$(LINK_OUTPUT)' $(+)
 	v++ -p $(LINK_OUTPUT) $(VPP_FLAGS) -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/fysat.xclbin
 
-############################## Setting Rules for Host (Building Host Executable) ##############################
+############################## Setting Rules for Host (Building Host Executable) ############################## -fPIC -mcmodel=large 
 $(EXECUTABLE): $(HOST_SRCS) | check-xrt
-		g++ -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+		g++ -mcmodel=large -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 emconfig:$(EMCONFIG_DIR)/emconfig.json
 $(EMCONFIG_DIR)/emconfig.json:

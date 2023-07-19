@@ -72,8 +72,15 @@ hls::stream<rsp_ol> rsp_l2m_arr;
 hls::stream<rsp_ol> rsp_l2m_arr_f;
 
 hls::vector<int, DSIZE> ClauseList_c[MAXNCLS * (MAXK / DSIZE)];
-hls::vector<int, DSIZE> VarsOccList_c[MAXNLIT * MAXR];
 
+// hls::vector<int, DSIZE>* ClauseList_c;
+
+// hls::vector<int, DSIZE> ClauseList_c[10];
+hls::vector<int, DSIZE> VarsOccList_c[410000];
+// hls::vector<int, DSIZE> VarsOccList_c[1000];
+
+
+// hls::vector<int, DSIZE>* VarsOccList_c;
 
 cls tl_XORed_partd_c[MAXNCLS / DSIZE + 1][DSIZE];	// XORed true literals
 cost cost_partd_c[MAXNCLS / DSIZE + 1][DSIZE];
@@ -86,9 +93,27 @@ cls UCB_partd_len_c[DSIZE];
 bscore bsArr_c[MAXNVAR + 1];		// break score
 bscore bs_dif_partd_c[MAXNVAR + 1][DSIZE];
 
-length cls_len_c[MAXNCLS + 1];
-clength ol_len_c[MAXNLIT];
+clength cls_len_c[MAXNCLS + 1];
+length ol_len_c[MAXNLIT];
 bool vaArr_c[MAXNVAR + 1];	// variable assignment	-> ap_uint<1>
+
+
+// cls** tl_XORed_partd_c;
+// cost** cost_partd_c;
+
+// int numOfUCs = 0;
+// cls** UCB_partd_c;
+// ucbidx** posInUCB_c;	// last line garbage @@@@@@@@
+// cls UCB_partd_len_c[DSIZE];
+
+// bscore* bsArr_c;		// break score
+// bscore** bs_dif_partd_c;
+
+// clength* cls_len_c;
+// length* ol_len_c;
+// bool vaArr_c[MAXNVAR + 1];	// variable assignment	-> ap_uint<1>
+
+
 
 int Ncls, Nvar, seed;
 int seed_bs;
@@ -101,9 +126,10 @@ int bs2probs_c[100] = {40710, 8734, 3655, 1985, 1240, 846, 612, 463, 362, 291, 2
 			3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2};
 
 
-void forcsim(hls::vector<length, SDSIZE> ol_len_off[], hls::vector<clength, SDSIZE> cls_len_off[],
+void forcsim(hls::vector<length, SDSIZE> ol_len_off[], hls::vector<clength, CDSIZE> cls_len_off[],
 		hls::vector<int, DSIZE> ClauseList[], hls::vector<int, DSIZE> VarsOccList[], int numClauses, int numVars, unsigned long long mmaxFlip) {
-	for (int i = 0; i < MAXNLIT * MAXR; i++) {
+	
+	for (int i = 0; i < 410000; i++) {
 		for (int j = 0; j < DSIZE; j++) {
 			VarsOccList_c[i][j] = VarsOccList[i][j];
 		}
@@ -115,11 +141,11 @@ void forcsim(hls::vector<length, SDSIZE> ol_len_off[], hls::vector<clength, SDSI
 		}
 	}
 
-	int maxcnt = (numClauses - 1) / SDSIZE + 1;
+	int maxcnt = (numClauses - 1) / CDSIZE + 1;
 	for (int i = 0; i <= maxcnt; i++) {
-		hls::vector<clength, SDSIZE> t = cls_len_off[i];
-		for (int j = 0; j < SDSIZE; j++) {
-			cls_len_c[i * SDSIZE + j] = t[j];
+		hls::vector<clength, CDSIZE> t = cls_len_off[i];
+		for (int j = 0; j < CDSIZE; j++) {
+			cls_len_c[i * CDSIZE + j] = t[j];
 		}
 	}
 
@@ -205,6 +231,7 @@ bool verify() {
 			}
 		}
 	}
+
 	return result;
 }
 
@@ -324,13 +351,11 @@ void mod_break_2() {
 	if (clen == -1) return;
 
 	lookup_break: for (int i = 0; i < clen; i++) {
-#pragma HLS PIPELINE II = 1
 		int vidx = rsp_c2b.read();
 		int bv = bsArr_c[ABS(vidx)];
 
 		int sum = 0;
 		for (int s = 0; s < DSIZE; s++) {
-#pragma HLS UNROLL
 			sum += bs_dif_partd_c[ABS(vidx)][s];
 		}
 		bv += sum;
@@ -346,7 +371,6 @@ void mod_break_2() {
 	int randPosition = r8b * sumProb / 256;
 
 	choose_var: for (int i = 0; i < clen; i++) {
-#pragma HLS PIPELINE II = 1
 		if (probs[i] >= randPosition) {
 			var_flip = tempcls[i];
 			break;
@@ -361,7 +385,6 @@ void mod_break_2() {
 
 		int sum = 0;
 		for (int s = 0; s < DSIZE; s++) {
-#pragma HLS UNROLL
 			sum += bs_dif_partd_c[ABS(var)][s];
 			bs_dif_partd_c[ABS(var)][s] = 0;
 		}
@@ -383,7 +406,6 @@ void mod_break_3() {
 		upd_bv_arr updline = upd_m2b_arr.read();
 
 		d1_1line: for (int i = 0; i < DSIZE; i++) {
-#pragma HLS UNROLL
 			bscore upd = bs_dif_partd_c[updline.vidx[i]][i];
 			if (updline.vidx[i] != -1) {
 				upd = upd + updline.val[i];
@@ -397,7 +419,9 @@ void mod_break_3() {
 	bsArr_c[temp.vidx] = prev + (bscore)temp.val;
 }
 
-void mod_main(int numVars, int numClauses, int s) {
+void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) {
+
+	std::cout << "main starts" << std::endl;
 
 	unsigned long long flips = 0;
 	Ncls = numClauses;
@@ -416,7 +440,6 @@ void mod_main(int numVars, int numClauses, int s) {
 //	}
 
 	var: for (int i = 0; i <= Nvar; i++) {
-#pragma HLS PIPELINE II = 1
 		vaArr_c[i] = psrandom(seed) % 2 == 0 ? true : false;
 		// vaArr_c[i] = i % 2 == 0 ? true : false;
 	}
@@ -435,7 +458,6 @@ void mod_main(int numVars, int numClauses, int s) {
 		int tl = 0;
 
 		for (int i = 0; i < num_blk; i++) {
-#pragma HLS PIPELINE II = 1
 			int lit = vars_c2m.read();
 			if (vaArr_c[ABS(lit)] == (lit > 0)) {
 				totcost++;
@@ -479,6 +501,7 @@ void mod_main(int numVars, int numClauses, int s) {
 
 	flip: for (unsigned long long f = 0; f < maxFlip; f++) {
 		// if (f % (MAX_FLIPS / PRINT_FLIP_TIMES) == 0) { std::cout << numOfUCs << " "; }
+		std::cout << f << " " << numOfUCs << " | ";
 
 		if (numOfUCs == 0) {
 			flips = f;
@@ -534,13 +557,13 @@ void mod_main(int numVars, int numClauses, int s) {
 		int ucbdec_tot = 0;
 		int bvinc_tot = 0;
 		cost_inc_loop: for (int t = 0; t < b1len; t++) {
+			
 			rsp_ol ol_elem = rsp_l2m_arr.read();
 			upd_bv_arr bvdec_1line;
 			int ucbdec_1line = 0;
 			int bvinc_1line = 0;
 
 			loc_1line_1: for (int i = 0; i < DSIZE; i++) {
-#pragma HLS UNROLL
 				int cn = ol_elem.oidx[i];
 				int ucbdec = 0;
 				int bvinc = 0;
@@ -565,6 +588,8 @@ void mod_main(int numVars, int numClauses, int s) {
 
 						bvinc = 1;								// bv++
 						critv = ABS(var_flip);
+
+						// std::cout << i << " " << UCB_partd_len_c[i] << "=" << row_ucb - 1 << std::endl;
 
 						UCB_partd_len_c[i] = row_ucb - 1;
 
@@ -601,7 +626,6 @@ void mod_main(int numVars, int numClauses, int s) {
 			int bvdec_1line = 0;
 
 			loc_1line_2: for (int i = 0; i < DSIZE; i++) {
-#pragma HLS UNROLL
 				int cn = ol_elem.oidx[i];
 				int ucbinc = 0;
 				int bvdec = 0;
@@ -621,7 +645,12 @@ void mod_main(int numVars, int numClauses, int s) {
 						cls row_ucb = UCB_partd_len_c[i];
 						UCB_partd_c[row_ucb][i] = cn;
 						posInUCB_c[row][i] = row_ucb;
+
+						//std::cout << i << " " << UCB_partd_len_c[i] << "=" << row_ucb + 1 << std::endl;
+
 						UCB_partd_len_c[i] = row_ucb + 1;
+
+						
 					}
 					else if (cost == 2) {
 						tbvidx = critv ^ ABS(var_flip);
@@ -641,6 +670,11 @@ void mod_main(int numVars, int numClauses, int s) {
 			bvdec_tot += bvdec_1line;
 		}
 
+		for (int i = 0; i < DSIZE; i++) {
+			std::cout << UCB_partd_len_c[i] << " ";
+		}
+		std::cout << std::endl;
+
 		upd_bv bv_last;
 		bv_last.vidx = ABS(var_flip);
 		bv_last.val = bvinc_tot - bvdec_tot;
@@ -651,6 +685,8 @@ void mod_main(int numVars, int numClauses, int s) {
 
 		mod_break_3();
 	}
+
+	// std::cout << flips << std::endl;
 
 	req_m2c.write(-1);
 	mod_cls_2();
@@ -675,17 +711,29 @@ void mod_main(int numVars, int numClauses, int s) {
 	clock_t end = clock();
 	// std::cout << "Solver completed in: " << (double)(end - start)/CLOCKS_PER_SEC << " seconds | flip: " << flipcnt[0] << std::endl;
 	// std::cout << upd_m2b.size() << upd_m2b_arr.size() << clen_c2m.size() << vars_c2m.size() << req_m2c.size() << rsp_c2b.size() << rsp_b2m.size() << req_m2l.size() << rsp_l2m_arr.size() << rsp_l2m_arr_f.size() << "\n";
+	if (flips) {
+		flipcnt[0] = flips;
+	}
+	else {
+		flipcnt[0] = 0;
+	}
+	
 }
 
 
-void fysat(hls::vector<length, SDSIZE> ol_len_off[], hls::vector<clength, SDSIZE> cls_len_off[],
+void fysat(hls::vector<length, SDSIZE> ol_len_off[], hls::vector<clength, CDSIZE> cls_len_off[],
 		hls::vector<int, DSIZE> ClauseList[], hls::vector<int, DSIZE> VarsOccList[],
 		int numVars, int numClauses, int s, int k, unsigned long long maxFlip, unsigned long long flipcnt[]) {
 
+	// ClauseList_c = new hls::vector<int, DSIZE> [MAXNCLS * (MAXK / DSIZE)];
+
 	int sss = s;
+	int kkk = k;
 	unsigned long long mmaxFlip = maxFlip;
 	forcsim(ol_len_off, cls_len_off, ClauseList, VarsOccList, numClauses, numVars, mmaxFlip);
-	mod_main(numVars, numClauses, s);
+	mod_main(numVars, numClauses, s, flipcnt);
 	clean();
+
+	// delete[] ClauseList_c;
 }
 }

@@ -53,14 +53,14 @@ PACKAGE_OUT = ./package.$(TARGET)
 
 VPP_PFLAGS := 
 CMD_ARGS = $(BUILD_DIR)/fysat.xclbin
-CXXFLAGS += -I$(XILINX_XRT)/include -I$(XILINX_VIVADO)/include -Wall -O0 -g -std=c++1y
+CXXFLAGS += -I$(XILINX_XRT)/include -I$(XILINX_VIVADO)/include -Wall -O3 -g -std=c++1y
 LDFLAGS += -L$(XILINX_XRT)/lib -pthread -lOpenCL
 
 ########################## Checking if PLATFORM in allowlist #######################
 PLATFORM_BLOCKLIST += nodma 
 ############################## Setting up Host Variables ##############################
 #Include Required Host Source Files
-CXXFLAGS += -I$(XF_PROJ_ROOT)/common/includes/xcl2 -I/opt/Xilinx/Vitis_HLS/2021.1/include
+CXXFLAGS += -I$(XF_PROJ_ROOT)/common/includes/xcl2 -I$(XF_PROJ_ROOT)/common/include
 HOST_SRCS += $(XF_PROJ_ROOT)/common/includes/xcl2/xcl2.cpp ./src/host.cpp 
 # Host compiler global settings
 CXXFLAGS += -fmessage-length=0
@@ -68,20 +68,25 @@ LDFLAGS += -lrt -lstdc++
 
 ############################## Setting up Kernel Variables ##############################
 # Kernel compiler global settings
-VPP_FLAGS += --save-temps 
+VPP_FLAGS += --save-temps
 
 
 EXECUTABLE = ./fyalsat.exe
 EMCONFIG_DIR = $(TEMP_DIR)
 
 
-# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k7-r90-v60-c5267.cnf 19437907
-# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
-CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/p12-k7-001.cnf 0 50 16 640
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin k7-r90-v60-c5267.cnf 19437907
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin p12-k7-001.cnf 0 50 16 640
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin C3-2-31.cnf 0 10 16 15000
+CMD_ARGS = $(BUILD_DIR)/fysat.xclbin n_queens32.dimacs 0 10000 32 640
+
 
 VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:HBM[1]
 VPP_FLAGS += --connectivity.sp fysat_1.cls_len_off:HBM[0]
 VPP_FLAGS += --connectivity.sp fysat_1.flipcnt:HBM[2]
+VPP_FLAGS += --connectivity.sp fysat_1.answer:HBM[3]
+
 VPP_FLAGS += --connectivity.sp fysat_1.ClauseList:DDR[0]
 VPP_FLAGS += --connectivity.sp fysat_1.VarsOccList:DDR[1]
 # VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:DDR[0]

@@ -9,7 +9,8 @@
 
 #include "wsat_hls.h"
 
-#define DSSIZE 1000000000
+#define DSSIZE_C 1500000000
+#define DSSIZE 100000000
 #define MAX_HBM_PC_COUNT 32
 #define PC_NAME(n) n | XCL_MEM_TOPOLOGY
 const int pc[MAX_HBM_PC_COUNT] = {
@@ -20,8 +21,27 @@ const int pc[MAX_HBM_PC_COUNT] = {
 
 short varR_off[MAXNLIT];
 
-void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int, aligned_allocator<int>>& VarsOccList, 
-    std::vector<short, aligned_allocator<short>>& cls_len_off, std::vector<short, aligned_allocator<short>>& ol_len_off,
+bool verify(int numClauses, std::vector<char, aligned_allocator<char>>& vaArr, 
+			std::vector<clength, aligned_allocator<clength>>& cls_len_off, 
+			std::vector<int, aligned_allocator<int>>& ClauseList) {
+	
+	for (int c = 1; c <= numClauses; c++) {
+		bool cls = false;
+		clength clen = cls_len_off[c];
+		
+		for (int i = 0; i < clen; i++) {
+			int lit = ClauseList[c * MAXK + i];
+			bool tval = vaArr[ABS(lit)] > 0;
+			if (tval == (lit > 0)) cls = true;
+		}
+		if (cls == false) return 0;
+	}
+
+	return 1;
+}
+
+void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int, aligned_allocator<int>>& VarsOccList, std::vector<int, aligned_allocator<int>>& VarsOccList_CPU, 
+    std::vector<clength, aligned_allocator<clength>>& cls_len_off, std::vector<length, aligned_allocator<length>>& ol_len_off,
     std::string fileName, int& numVars, int& numClauses, int k, int r) {
 
 	std::cout << "init starts\n";
@@ -82,8 +102,8 @@ void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int,
 					nvinc++;
 
 					for (int i = 0; i < r; i++) {
-						if (VarsOccList[GETPOS(nextLit) * r + i] == 0) {
-							VarsOccList[GETPOS(nextLit) * r + i] = clauseCounted;
+						if (VarsOccList_CPU[GETPOS(nextLit) * r * DSIZE + i] == 0) {
+							VarsOccList_CPU[GETPOS(nextLit) * r * DSIZE + i] = clauseCounted;
 
 							varR_off[GETPOS(nextLit)] = i + 1;
 							if (i + 1 > maxr) {
@@ -110,14 +130,13 @@ void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int,
 	ol_len_off[0] = 0;
 
 	for (int v = 0; v < numVars * 2; v++) {
-
 		std::vector<int> waitlist[DSIZE];
 
 		int rlen = varR_off[v];
 		int start = ol_len_off[v];
 
 		for (int i = 0; i < rlen; i++) {
-			int loc = VarsOccList[r * v + i]; 
+			int loc = VarsOccList_CPU[v * r * DSIZE + i]; 
 			waitlist[loc % DSIZE].push_back(loc);
 		}
 
@@ -153,13 +172,12 @@ int main(int argc, char** argv) {
 
 	int randseed, k, r;
 	unsigned long long maxFlip;
-	randseed = 11025212;
    
     std::string binaryFile = argv[1];
 
 	char the_path[256];
 	getcwd(the_path, 255);
-	strcat(the_path, "/../");
+	strcat(the_path, "/../test/");
 	strcat(the_path, argv[2]);
 
     std::string fileName(the_path);
@@ -167,26 +185,18 @@ int main(int argc, char** argv) {
 	std::string fstr(argv[4]);
 	std::string kstr(argv[5]);
 	std::string rstr(argv[6]);
-
+	
 	randseed = stoi(ss);
-	if (randseed == 0) {
-		randseed = time(0);
-	}
+	if (randseed == 0) {randseed = time(0);}
 
 	maxFlip = stoi(fstr);
-	if (maxFlip == 0) {
-		maxFlip = MAXFLIP;
-	}
+	if (maxFlip == 0) {maxFlip = MAXFLIP;}
 
 	k = stoi(kstr);
-	if (k == 0) {
-		k = MAXK;
-	}
+	if (k == 0) {k = MAXK;}
 
 	r = stoi(rstr);
-	if (r == 0) {
-		r = MAXR;
-	}
+	if (r == 0) {r = MAXR;}
 
 	srand(randseed);
 
@@ -197,17 +207,22 @@ int main(int argc, char** argv) {
     cl::Kernel krnl_yalsat;
     cl::CommandQueue q;
     
-	std::vector<int, aligned_allocator<int>> ClauseList(DSSIZE, 0);
+    std::vector<int, aligned_allocator<int>> ClauseList(DSSIZE, 0);
 	std::vector<int, aligned_allocator<int>> VarsOccList(DSSIZE, 0);
-	std::vector<short, aligned_allocator<short>> cls_len_off(MAXNCLS, 0);
-	std::vector<short, aligned_allocator<short>> ol_len_off(MAXNLIT, 0);
+	std::vector<int, aligned_allocator<int>> VarsOccList_CPU(DSSIZE_C, 0);
+	
+	std::vector<clength, aligned_allocator<clength>> cls_len_off(MAXNCLS, 0);
+	std::vector<length, aligned_allocator<length>> ol_len_off(MAXNLIT, 0);
+	
 	std::vector<unsigned long long, aligned_allocator<unsigned long long>> flipcnt(1, 0);
+	std::vector<char, aligned_allocator<char>> VarsAssgmt(MAXNLIT, 0);
 
     int numVars, numClauses;
 
 	std::vector<cl_mem_ext_ptr_t> cls_len_buf(1);
     std::vector<cl_mem_ext_ptr_t> ol_len_buf(1);
 	std::vector<cl_mem_ext_ptr_t> flipcnt_buf(1);
+	std::vector<cl_mem_ext_ptr_t> answer_buf(1);
     
 	cls_len_buf[0].obj = cls_len_off.data();
 	cls_len_buf[0].param = 0;
@@ -221,10 +236,15 @@ int main(int argc, char** argv) {
 	flipcnt_buf[0].param = 0;
 	flipcnt_buf[0].flags = pc[2];
 
-    std::cout << fileName << " seed: " << randseed << "\n";
-    init(ClauseList, VarsOccList, cls_len_off, ol_len_off, fileName, numVars, numClauses, k, r);
+	answer_buf[0].obj = VarsAssgmt.data(); //flipcnt.data();
+	answer_buf[0].param = 0;
+	answer_buf[0].flags = pc[3];
+
+    std::cout << fileName << " seed: " << randseed << " k: " << k << " max occ: " << r << "\n";
+    init(ClauseList, VarsOccList, VarsOccList_CPU, cls_len_off, ol_len_off, fileName, numVars, numClauses, k, r);
 
 	printf("Done initializing vectors\n");
+	// exit(0);
 
     auto devices = xcl::get_xil_devices();
     auto fileBuf = xcl::read_binary_file(binaryFile);
@@ -250,20 +270,14 @@ int main(int argc, char** argv) {
         std::cout << "Failed to program any device found, exit!\n";
         exit(EXIT_FAILURE);
     }
-
-    // Allocate Buffer in Global Memory
-    // Buffers are allocated using CL_MEM_USE_HOST_PTR for efficient memory and
-    // Device-to-host communication
-    // OCL_CHECK(err, cl::Buffer b_ol_len_off(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(short)* MAXNLIT, ol_len_off.data(), &err));
-    // OCL_CHECK(err, cl::Buffer b_cls_len_off(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(short)* MAXNCLS, cls_len_off.data(), &err));
 	
-    OCL_CHECK(err, cl::Buffer b_ol_len_off(context, CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(short)* MAXNLIT, &ol_len_buf[0], &err));
-    OCL_CHECK(err, cl::Buffer b_cls_len_off(context, CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(short)* MAXNCLS, &cls_len_buf[0], &err));
-    OCL_CHECK(err, cl::Buffer b_CL(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(int)* MAXNCLS * MAXK, ClauseList.data(), &err));
-    OCL_CHECK(err, cl::Buffer b_VOL(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(int)* MAXNLIT * MAXR * DSIZE, VarsOccList.data(), &err));
+    OCL_CHECK(err, cl::Buffer b_ol_len_off(context, CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(length)* MAXNLIT, &ol_len_buf[0], &err));
+    OCL_CHECK(err, cl::Buffer b_cls_len_off(context, CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(clength)* MAXNCLS, &cls_len_buf[0], &err));
+    OCL_CHECK(err, cl::Buffer b_CL(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(int)* DSSIZE, ClauseList.data(), &err));
+    OCL_CHECK(err, cl::Buffer b_VOL(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, sizeof(int)* DSSIZE, VarsOccList.data(), &err));
 	
-	// OCL_CHECK(err, cl::Buffer b_ret(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, sizeof(int)*1, flipcnt.data(), &err));
 	OCL_CHECK(err, cl::Buffer b_flipcnt(context, CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, sizeof(unsigned long long)*1, &flipcnt_buf[0], &err));
+	OCL_CHECK(err, cl::Buffer b_answer(context, CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, sizeof(char)* MAXNLIT, &answer_buf[0], &err));
 
     OCL_CHECK(err, err = krnl_yalsat.setArg(0, b_ol_len_off));
     OCL_CHECK(err, err = krnl_yalsat.setArg(1, b_cls_len_off));
@@ -275,6 +289,7 @@ int main(int argc, char** argv) {
 	OCL_CHECK(err, err = krnl_yalsat.setArg(7, k));
 	OCL_CHECK(err, err = krnl_yalsat.setArg(8, maxFlip));
 	OCL_CHECK(err, err = krnl_yalsat.setArg(9, b_flipcnt));
+	OCL_CHECK(err, err = krnl_yalsat.setArg(10, b_answer));
 
 	OCL_CHECK(err, err = q.enqueueMigrateMemObjects({b_ol_len_off, b_cls_len_off, b_CL, b_VOL}, 0 /* 0 means from host*/));
 	q.finish();
@@ -291,13 +306,12 @@ int main(int argc, char** argv) {
 	double exec_time_ext = std::chrono::duration_cast<std::chrono::nanoseconds>(end - estart).count();
 	unsigned long long flips;
 
-	// OCL_CHECK(err, err = q.enqueueMigrateMemObjects({b_ol_len_off}, CL_MIGRATE_MEM_OBJECT_HOST));
-
-	OCL_CHECK(err, err = q.enqueueMigrateMemObjects({b_flipcnt}, CL_MIGRATE_MEM_OBJECT_HOST));
-	// OCL_CHECK(err, err = q.enqueueMigrateMemObjects({buffer_AB}, CL_MIGRATE_MEM_OBJECT_HOST));
+	OCL_CHECK(err, err = q.enqueueMigrateMemObjects({b_flipcnt, b_answer}, CL_MIGRATE_MEM_OBJECT_HOST));
 	q.finish();
 
-	if (flipcnt[0] > 0) {
+	bool issat = verify(numClauses, VarsAssgmt, cls_len_off, ClauseList);
+
+	if (issat) { // if (flipcnt[0] > 0) {
 		std::cout << "Solver found a solution.\n";
 		flips = flipcnt[0];
 	}
@@ -305,7 +319,8 @@ int main(int argc, char** argv) {
 		std::cout << "Solver could not find a solution.\n";
 		flips = maxFlip;
 	}
-	
+
+
 	double Mfs = (double)flips / (exec_time * 1e-9);
 
 	std::cout << "Time: " << std::setw(19) << exec_time*1e-9 << std::endl;
