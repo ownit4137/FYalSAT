@@ -92,30 +92,37 @@ void mod_cls (	hls::stream<int>& clen_c2m, hls::stream<int>& vars_c2m,
 		}
 	}
 
-	flip_cls: for (unsigned long long f = 0; f < maxFlip; f++) {
+	unsigned long long f = 0;
+	flip_cls: while (f < maxFlip) {
 
-		wait1: while (req_m2c.empty()) {}
-		int cidx = req_m2c.read();
-		if (cidx == -1) {
-			rsp_c2b.write(-1);
-			break;
-		}
+		if (!req_m2c.empty()) {
 
-		int clen = cls_len[cidx];
-		int num_blk = ((clen - 1) / DSIZE) + 1;
-
-		wclen: while (rsp_c2b.full()) {}
-		rsp_c2b.write(clen);
-
-		wc: while (rsp_c2b.full()) {}
-		uc_send: for (int b = 0; b < num_blk; b++) {
-			hls::vector<int, DSIZE> t = ClauseList[cidx * (k / DSIZE) + b];
-			int size = (b == num_blk - 1) ? ((clen - 1) % DSIZE) + 1 : DSIZE;						// mod 2
-
-			uc_req_1line: for (int i = 0; i < size; i++) {
-#pragma HLS PIPELINE II = 1
-				rsp_c2b.write(t[i]);
+			int cidx = req_m2c.read();
+			if (cidx == -1) {
+				rsp_c2b.write(-1);
+				break;
 			}
+
+			int clen = cls_len[cidx];
+			int num_blk = ((clen - 1) / DSIZE) + 1;
+
+			rsp_c2b.write(clen);
+
+			uc_send: for (int b = 0; b < num_blk; b++) {
+				hls::vector<int, DSIZE> t = ClauseList[cidx * (k / DSIZE) + b];
+				int size = (b == num_blk - 1) ? ((clen - 1) % DSIZE) + 1 : DSIZE;						// mod 2
+
+				int i = 0;
+				uc_req_1line: while (i < size) {
+#pragma HLS PIPELINE II = 1
+					if (!rsp_c2b.full()) {
+						rsp_c2b.write(t[i]);
+						i++;
+					}
+				}
+			}
+
+			f++;
 		}
 	}
 }
@@ -123,44 +130,53 @@ void mod_cls (	hls::stream<int>& clen_c2m, hls::stream<int>& vars_c2m,
 void mod_loc( hls::stream<num_line>& req_m2l, hls::stream<rsp_ol>& rsp_l2m_arr, hls::stream<rsp_ol>& rsp_l2m_arr_f,
 			  hls::vector<int, DSIZE> VarsOccList[], unsigned long long maxFlip) {
 		
-	flip_loc: for (unsigned long long f = 0; f < maxFlip; f++) {
+	unsigned long long f = 0;
+	flip_loc: while (f < maxFlip) {
+		
+		if (!req_m2l.empty()) {
+		
+			num_line ll = req_m2l.read();
+			if (ll.vidx == 0) break;
 
-		num_line_wait: while (req_m2l.empty()) {}
-		num_line ll = req_m2l.read();
-		if (ll.vidx == 0) {
-			break;
-		}
+			bool dir = ll.vidx < 0;
+			int idx = ll.vidx < 0 ? ll.vidx : -ll.vidx;
+			int stadd = ll.l1start < ll.l2start ? ll.l1start : ll.l2start;
 
-		bool dir = ll.vidx < 0;
-		int idx = ll.vidx < 0 ? ll.vidx : -ll.vidx;
-		int stadd = ll.l1start < ll.l2start ? ll.l1start : ll.l2start;
 
-		loc_req: for (int i = 0; i < ll.l1size + ll.l2size; i++) {
-			hls::vector<int, DSIZE> rspol = VarsOccList[stadd + i];		// test
-			rsp_ol temp;
-			loc_1line1: for (int j = 0; j < DSIZE; j++) {
+			int i = 0;
+			loc_req: while (i < ll.l1size + ll.l2size) {
+#pragma HLS PIPELINE II = 1
+				if (!rsp_l2m_arr.full() && !rsp_l2m_arr_f.full()) {
+
+					hls::vector<int, DSIZE> rspol = VarsOccList[stadd + i];
+					rsp_ol temp;
+					loc_1line1: for (int j = 0; j < DSIZE; j++) {
 #pragma HLS UNROLL
-				temp.oidx[j] = rspol[j];
+						temp.oidx[j] = rspol[j];
+					}
+
+					if (dir) {
+						if (i < ll.l1size) {
+							rsp_l2m_arr.write(temp);
+						}
+						else {
+							rsp_l2m_arr_f.write(temp);
+						}
+					}
+					else {
+						if (i < ll.l2size) {
+							rsp_l2m_arr_f.write(temp);
+						}
+						else {
+							rsp_l2m_arr.write(temp);
+						}
+					}
+
+					i++;
+				}
 			}
 
-			wloc_wait: while (rsp_l2m_arr.full() || rsp_l2m_arr_f.full()) {}
-
-			if (dir) {
-				if (i < ll.l1size) {
-					rsp_l2m_arr.write(temp);
-				}
-				else {
-					rsp_l2m_arr_f.write(temp);
-				}
-			}
-			else {
-				if (i < ll.l2size) {
-					rsp_l2m_arr_f.write(temp);
-				}
-				else {
-					rsp_l2m_arr.write(temp);
-				}
-			}
+			f++;
 		}
 	}
 }
@@ -169,7 +185,9 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 				hls::stream<int>& rsp_c2b, hls::stream<int>& rsp_b2m, int s, int numVars, unsigned long long maxFlip) {
 	
 	bscore bsArr[MAXNVAR + 1];
+#pragma HLS bind_storage variable=bsArr impl=uram type=RAM_2P
 	bscore bs_dif_partd[MAXNVAR + 1][DSIZE];
+#pragma HLS bind_storage variable=bs_dif_partd impl=uram type=RAM_2P
 	int seed = s;
 
 	int bs2probs[100] = {40710, 8734, 3655, 1985, 1240, 846, 612, 463, 362, 291, 238, 199, 168, 144, 125, 109, 96, 86, 76, 69,
@@ -198,7 +216,9 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 	}
 
 	/////////////////////// [[  FLIP  ]] //////////////////////////
-	flip_brk: for (unsigned long long f = 0; f < maxFlip; f++) {
+
+	unsigned long long f = 0;
+	flip_brk: while (f < maxFlip) {
 
 		/////////////////////// [[  BV RSP  ]] //////////////////////////
 
@@ -210,87 +230,92 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 		int probs[MAXK];
 		int sumProb = 0;
 
-		rsp_c2b_wait: while(rsp_c2b.empty()) {}
-		int clen = rsp_c2b.read();
-		if (clen == -1) break;
+		if (!rsp_c2b.empty()) {
+			int clen = rsp_c2b.read();
+			if (clen == -1) break;
 
-		lookup_break: for (int i = 0; i < clen; i++) {
+			lookup_break: for (int i = 0; i < clen; i++) {
 #pragma HLS PIPELINE II = 1
-			int vidx = rsp_c2b.read();
-			int bv = bsArr[ABS(vidx)];
+				int vidx = rsp_c2b.read();
+				int bv = bsArr[ABS(vidx)];
 
-			int sum = 0;
-			for (int s = 0; s < DSIZE; s++) {
+				int sum = 0;
+				for (int s = 0; s < DSIZE; s++) {
 #pragma HLS UNROLL
-				sum += bs_dif_partd[ABS(vidx)][s];
-			}
-			bv += sum;
-
-			int p = bv >= 100 ? 1 : bs2probs[bv];
-			sumProb += p;
-			probs[i] = sumProb;
-			tempcls[i] = vidx;
-		}
-
-		int r8b = psrandom(seed) & 255;
-		int randPosition = r8b * sumProb / 256;
-
-		choose_var: for (int i = 0; i < clen; i++) {
-#pragma HLS PIPELINE II = 1
-			if (probs[i] >= randPosition) {
-				var_flip = tempcls[i];
-				break;
-			}
-		}
-
-		wvflip_wait: while (rsp_b2m.full()) {}
-		rsp_b2m.write(var_flip);
-
-		upd_brk: for (int i = 0; i < clen; i++) {
-			int var = tempcls[i];
-			int bv = bsArr[ABS(var)];
-
-			int sum = 0;
-			upd_sum: for (int s = 0; s < DSIZE; s++) {
-#pragma HLS UNROLL
-				sum += bs_dif_partd[ABS(var)][s];
-				bs_dif_partd[ABS(var)][s] = 0;
-			}
-
-			bsArr[ABS(var)] = bv + sum;
-		}
-
-		/////////////////////// [[  BV UPD  ]] //////////////////////////
-
-		upd_m2b_wait: while (upd_m2b.empty()) {}
-		upd_bv temp;
-		int b1len, b2len;
-		temp = upd_m2b.read();
-		b1len = temp.val;
-		temp = upd_m2b.read();
-		b2len = temp.val;
-
-		upd_line_wait: while (upd_m2b_arr.empty()) {}
-		bv_upd_d1: for (int b = 0; b < b1len + b2len; b++) {
-#pragma HLS PIPELINE II = 1
-			upd_bv_arr updline = upd_m2b_arr.read();
-
-			d1_1line: for (int i = 0; i < DSIZE; i++) {
-#pragma HLS UNROLL
-				bscore upd = bs_dif_partd[updline.vidx[i]][i];
-				if (updline.vidx[i] != -1) {
-					upd = upd + updline.val[i];
+					sum += bs_dif_partd[ABS(vidx)][s];
 				}
-				bs_dif_partd[updline.vidx[i]][i] = upd;
-			}
-		}
-		
-		upd_1_wait: while (upd_m2b.empty()) {}
-		temp = upd_m2b.read();
-		bscore prev = bsArr[temp.vidx];
-		bsArr[temp.vidx] = prev + (bscore)temp.val;
-	}
+				bv += sum;
 
+				int p = bv >= 100 ? 1 : bs2probs[bv];
+				sumProb += p;
+				probs[i] = sumProb;
+				tempcls[i] = vidx;
+			}
+
+			int r8b = psrandom(seed) & 255;
+			int randPosition = r8b * (sumProb / 256);
+
+			choose_var: for (int i = 0; i < clen; i++) {
+#pragma HLS PIPELINE II = 1
+				if (probs[i] >= randPosition) {
+					var_flip = tempcls[i];
+					break;
+				}
+			}
+
+			rsp_b2m.write(var_flip);
+
+			upd_brk: for (int i = 0; i < clen; i++) {
+				int var = tempcls[i];
+				int bv = bsArr[ABS(var)];
+
+				int sum = 0;
+				upd_sum: for (int s = 0; s < DSIZE; s++) {
+#pragma HLS UNROLL
+					sum += bs_dif_partd[ABS(var)][s];
+					bs_dif_partd[ABS(var)][s] = 0;
+				}
+
+				bsArr[ABS(var)] = bv + sum;
+			}
+
+			/////////////////////// [[  BV UPD  ]] //////////////////////////
+
+			upd_bv temp;
+			int b1len, b2len;
+			temp = upd_m2b.read();
+			b1len = temp.val;
+			temp = upd_m2b.read();
+			b2len = temp.val;
+
+			int b = 0;
+			bv_upd_d1: while (b < b1len + b2len) {
+
+				if (!upd_m2b_arr.empty()) {
+#pragma HLS PIPELINE II = 1
+					upd_bv_arr updline = upd_m2b_arr.read();
+
+					d1_1line: for (int i = 0; i < DSIZE; i++) {
+#pragma HLS UNROLL
+						bscore upd = bs_dif_partd[updline.vidx[i]][i];
+						if (updline.vidx[i] != -1) {
+							upd = upd + updline.val[i];
+						}
+						bs_dif_partd[updline.vidx[i]][i] = upd;
+					}
+
+					b++;
+				}
+			}
+			
+
+			temp = upd_m2b.read();
+			bscore prev = bsArr[temp.vidx];
+			bsArr[temp.vidx] = prev + (bscore)temp.val;
+
+			f++;
+		}
+	}
 }
 
 inline void upd_l2m_arr(int var_flip, int b1len,
@@ -299,62 +324,67 @@ inline void upd_l2m_arr(int var_flip, int b1len,
  						cls UCB_partd_len[DSIZE], ucbidx posInUCB[][DSIZE], cls UCB_partd[][DSIZE],
 						int& ucbdec_tot, int& bvinc_tot) {
 	
-	rinc_wait: while (rsp_l2m_arr.empty()) {}
-	cost_inc_loop: for (int t = 0; t < b1len; t++) {
+	int t = 0;
+	cost_inc_loop: while (t < b1len) {
 #pragma HLS pipeline II=1
-		rsp_ol ol_elem = rsp_l2m_arr.read();
-		upd_bv_arr bvdec_1line;
-		int ucbdec_1line = 0;
-		int bvinc_1line = 0;
 
-		for (int i = 0; i < DSIZE; i++) {
+		if (!rsp_l2m_arr.empty()) {
+			rsp_ol ol_elem = rsp_l2m_arr.read();
+			upd_bv_arr bvdec_1line;
+			int ucbdec_1line = 0;
+			int bvinc_1line = 0;
+
+			for (int i = 0; i < DSIZE; i++) {
 #pragma HLS UNROLL
-			int cn = ol_elem.oidx[i];
-			int ucbdec = 0;
-			int bvinc = 0;
-			int tbvidx = -1;
-			bscore tbvval = 0;
+				int cn = ol_elem.oidx[i];
+				int ucbdec = 0;
+				int bvinc = 0;
+				int tbvidx = -1;
+				bscore tbvval = 0;
 
-			if (cn > 0) {
-				int row = cn / DSIZE;
-				cost cost = cost_partd[row][i];
-				int critv = tl_XORed_partd[row][i];
+				if (cn > 0) {
+					int row = cn / DSIZE;
+					cost cost = cost_partd[row][i];
+					int critv = tl_XORed_partd[row][i];
 
-				if (cost == 0) {	// ucbdelete
-					int row_ucb = UCB_partd_len[i];
-					int outIdx = posInUCB[row][i];
-					int replaceElem = UCB_partd[row_ucb - 1][i];
-					UCB_partd[outIdx][i] = replaceElem;
-					posInUCB[replaceElem / DSIZE][i] = outIdx;
+					if (cost == 0) {	// ucbdelete
+						int row_ucb = UCB_partd_len[i];
+						int outIdx = posInUCB[row][i];
+						int replaceElem = UCB_partd[row_ucb - 1][i];
+						UCB_partd[outIdx][i] = replaceElem;
+						posInUCB[replaceElem / DSIZE][i] = outIdx;
 
-					ucbdec = 1;
-					bvinc = 1;								// bv++
-					critv = ABS(var_flip);
+						ucbdec = 1;
+						bvinc = 1;								// bv++
+						critv = ABS(var_flip);
 
-					UCB_partd_len[i] = row_ucb - 1;
+						UCB_partd_len[i] = row_ucb - 1;
 
-				} else if (cost == 1) {
-					tbvidx = critv;
-					tbvval = -1;
-					critv = critv ^ ABS(var_flip);
-				} else {
-					critv = critv ^ ABS(var_flip);
+					} else if (cost == 1) {
+						tbvidx = critv;
+						tbvval = -1;
+						critv = critv ^ ABS(var_flip);
+					} else {
+						critv = critv ^ ABS(var_flip);
+					}
+
+					tl_XORed_partd[row][i] = (cls)critv;
+					cost_partd[row][i] = cost + 1;
 				}
 
-				tl_XORed_partd[row][i] = (cls)critv;
-				cost_partd[row][i] = cost + 1;
+				ucbdec_1line += ucbdec;
+				bvinc_1line += bvinc;
+				bvdec_1line.vidx[i] = tbvidx;
+				bvdec_1line.val[i] = tbvval;
 			}
 
-			ucbdec_1line += ucbdec;
-			bvinc_1line += bvinc;
-			bvdec_1line.vidx[i] = tbvidx;
-			bvdec_1line.val[i] = tbvval;
+			upd_m2b_arr.write(bvdec_1line);
+
+			ucbdec_tot += ucbdec_1line;
+			bvinc_tot += bvinc_1line;
+	
+			t++;
 		}
-
-		upd_m2b_arr.write(bvdec_1line);
-
-		ucbdec_tot += ucbdec_1line;
-		bvinc_tot += bvinc_1line;
 	}
 }
 
@@ -363,54 +393,60 @@ inline void upd_l2m_arr_f(	int var_flip, int b2len,
 							cost cost_partd[][DSIZE], cls tl_XORed_partd[][DSIZE], 
  							cls UCB_partd_len[DSIZE], ucbidx posInUCB[][DSIZE], cls UCB_partd[][DSIZE],
 							int& ucbinc_tot, int& bvdec_tot) {
-	
-	rdec_wait: while (rsp_l2m_arr_f.empty()) {}
-	cost_dec_loop: for (int t = 0; t < b2len; t++) {
+
+	int t = 0;
+	cost_dec_loop: while (t < b2len) {
 #pragma HLS pipeline II=1
-		rsp_ol ol_elem = rsp_l2m_arr_f.read();
-		upd_bv_arr bvinc_1line;
-		int ucbinc_1line = 0;
-		int bvdec_1line = 0;
 
-		for (int i = 0; i < DSIZE; i++) {
+		if (!rsp_l2m_arr_f.empty()) {
+			rsp_ol ol_elem = rsp_l2m_arr_f.read();
+			upd_bv_arr bvinc_1line;
+			int ucbinc_1line = 0;
+			int bvdec_1line = 0;
+
+			for (int i = 0; i < DSIZE; i++) {
 #pragma HLS UNROLL
-			int cn = ol_elem.oidx[i];
-			int ucbinc = 0;
-			int bvdec = 0;
-			int tbvidx = -1;
-			int tbvval = 0;
+				int cn = ol_elem.oidx[i];
+				int ucbinc = 0;
+				int bvdec = 0;
+				int tbvidx = -1;
+				int tbvval = 0;
 
-			if (cn > 0) {
-				int row = cn / DSIZE;
-				int critv = tl_XORed_partd[row][i];
-				cost cost = cost_partd[row][i];
-				
-				tl_XORed_partd[row][i] = (cls)(critv ^ ABS(var_flip));
+				if (cn > 0) {
+					int row = cn / DSIZE;
+					int critv = tl_XORed_partd[row][i];
+					cost cost = cost_partd[row][i];
+					
+					tl_XORed_partd[row][i] = (cls)(critv ^ ABS(var_flip));
 
-				if (cost == 1) {
-					ucbinc = 1;
-					bvdec = 1;												// bv--
+					if (cost == 1) {
+						ucbinc = 1;
+						bvdec = 1;												// bv--
 
-					cls row_ucb = UCB_partd_len[i];
-					UCB_partd[row_ucb][i] = cn;
-					posInUCB[row][i] = row_ucb;
-					UCB_partd_len[i] = row_ucb + 1; // row_aft;
+						cls row_ucb = UCB_partd_len[i];
+						UCB_partd[row_ucb][i] = cn;
+						posInUCB[row][i] = row_ucb;
+						UCB_partd_len[i] = row_ucb + 1; // row_aft;
+					}
+					else if (cost == 2) {
+						tbvidx = critv ^ ABS(var_flip);
+						tbvval = +1;
+					}
+					cost_partd[row][i] = cost - 1;		// can be moved
 				}
-				else if (cost == 2) {
-					tbvidx = critv ^ ABS(var_flip);
-					tbvval = +1;
-				}
-				cost_partd[row][i] = cost - 1;		// can be moved
+				ucbinc_1line += ucbinc;
+				bvdec_1line += bvdec;
+				bvinc_1line.vidx[i] = tbvidx;
+				bvinc_1line.val[i] = tbvval;
 			}
-			ucbinc_1line += ucbinc;
-			bvdec_1line += bvdec;
-			bvinc_1line.vidx[i] = tbvidx;
-			bvinc_1line.val[i] = tbvval;
-		}
-		upd_m2b_arr.write(bvinc_1line);
 
-		ucbinc_tot += ucbinc_1line;
-		bvdec_tot += bvdec_1line;
+			upd_m2b_arr.write(bvinc_1line);
+
+			ucbinc_tot += ucbinc_1line;
+			bvdec_tot += bvdec_1line;
+
+			t++;
+		}
 	}
 }
 
@@ -447,6 +483,7 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 #pragma HLS ARRAY_PARTITION variable=UCB_partd_len complete dim=1
 
 	length ol_len[MAXNLIT];		// char
+#pragma HLS bind_storage variable=ol_len impl=uram type=RAM_2P
 	bool vaArr[MAXNVAR + 1];	// variable assignment	-> ap_uint<1>
 
 	/////////////////////// [[  INIT  ]] //////////////////////////
@@ -521,77 +558,79 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 	rand1 = psrandom(seed);
 	rand2 = psrandom(seed);
 
-	flip: for (unsigned long long f = 0; f < maxFlip; f++) {
+	unsigned long long f = 0;
+	flip: while (f < maxFlip) {
+		
+		if (!req_m2c.full()) {
 
-		if (numOfUCs == 0) {
-			flips = f;
-			break;
+			if (numOfUCs == 0) {
+				flips = f;
+				break;
+			}
+
+			ap_uint<4> uccol = rand1 % DSIZE;
+			pick_uc: while (UCB_partd_len[uccol] == 0) {
+				uccol++;
+			}
+
+			int ucrow = sliceRand(rand1, rand2, (int)UCB_partd_len[uccol]);
+			int ucnum = UCB_partd[ucrow][uccol];
+
+			req_m2c.write(ucnum);
+
+			rand1 = psrandom(seed);
+			rand2 = psrandom(seed);
+
+			int var_flip = rsp_b2m.read();
+			vaArr[ABS(var_flip)] = 1 - vaArr[ABS(var_flip)];
+
+			/////////////////////// 2. IO loc //////////////////////////
+
+			int b1st = ol_len[GETPOS(var_flip)];
+			int b1len = ol_len[GETPOS(var_flip) + 1] - b1st;
+			int b2st = ol_len[GETPOS(-var_flip)];
+			int b2len = ol_len[GETPOS(-var_flip) + 1] - b2st;
+
+			num_line ltemp;
+			ltemp.vidx = var_flip;
+			ltemp.l1start = b1st;
+			ltemp.l1size = b1len;
+			ltemp.l2start = b2st;
+			ltemp.l2size = b2len;
+			req_m2l.write(ltemp);
+
+			upd_bv temp_size;
+			temp_size.vidx = f;
+			temp_size.val = b1len;
+			upd_m2b.write(temp_size);
+			temp_size.val = b2len;
+			upd_m2b.write(temp_size);
+
+			int ucbdec_tot = 0;
+			int bvinc_tot = 0;
+
+			int ucbinc_tot = 0;
+			int bvdec_tot = 0;
+
+			if (var_flip < 0) {
+				upd_l2m_arr(var_flip, b1len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbdec_tot, bvinc_tot); 
+				upd_l2m_arr_f(var_flip, b2len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbinc_tot, bvdec_tot); 
+			}
+			else {
+				upd_l2m_arr_f(var_flip, b2len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbinc_tot, bvdec_tot); 
+				upd_l2m_arr(var_flip, b1len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbdec_tot, bvinc_tot); 
+			}
+
+			upd_bv bv_last;
+			bv_last.vidx = ABS(var_flip);
+			bv_last.val = bvinc_tot - bvdec_tot;
+			upd_m2b.write(bv_last);
+
+			numOfUCs += ucbinc_tot;
+			numOfUCs -= ucbdec_tot;
+
+			f++;
 		}
-
-		ap_uint<4> uccol = rand1 % DSIZE;
-		pick_uc: while (UCB_partd_len[uccol] == 0) {
-			uccol++;
-		}
-
-		int ucrow = sliceRand(rand1, rand2, (int)UCB_partd_len[uccol]);
-		int ucnum = UCB_partd[ucrow][uccol];
-
-		wucnum_wait: while (req_m2c.full()) {}
-		req_m2c.write(ucnum);
-
-		rand1 = psrandom(seed);
-		rand2 = psrandom(seed);
-
-		var_flip_wait: while (rsp_b2m.empty()) {}
-		int var_flip = rsp_b2m.read();
-		vaArr[ABS(var_flip)] = 1 - vaArr[ABS(var_flip)];
-
-		/////////////////////// 2. IO loc //////////////////////////
-
-		int b1st = ol_len[GETPOS(var_flip)];
-		int b1len = ol_len[GETPOS(var_flip) + 1] - b1st;
-		int b2st = ol_len[GETPOS(-var_flip)];
-		int b2len = ol_len[GETPOS(-var_flip) + 1] - b2st;
-
-		num_line ltemp;
-		ltemp.vidx = var_flip;
-		ltemp.l1start = b1st;
-		ltemp.l1size = b1len;
-		ltemp.l2start = b2st;
-		ltemp.l2size = b2len;
-		wlocinfo_wait: while (req_m2l.full()) {}
-		req_m2l.write(ltemp);
-
-		wblkinfo_wait: while (upd_m2b.full()) {}
-		upd_bv temp_size;
-		temp_size.val = b1len;
-		upd_m2b.write(temp_size);
-		temp_size.val = b2len;
-		upd_m2b.write(temp_size);
-
-		int ucbdec_tot = 0;
-		int bvinc_tot = 0;
-
-		int ucbinc_tot = 0;
-		int bvdec_tot = 0;
-
-		if (var_flip < 0) {
-			upd_l2m_arr(var_flip, b1len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbdec_tot, bvinc_tot); 
-			upd_l2m_arr_f(var_flip, b2len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbinc_tot, bvdec_tot); 
-		}
-		else {
-			upd_l2m_arr_f(var_flip, b2len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbinc_tot, bvdec_tot); 
-			upd_l2m_arr(var_flip, b1len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbdec_tot, bvinc_tot); 
-		}
-
-		wbv_wait: while (upd_m2b.full()) {}
-		upd_bv bv_last;
-		bv_last.vidx = ABS(var_flip);
-		bv_last.val = bvinc_tot - bvdec_tot;
-		upd_m2b.write(bv_last);
-
-		numOfUCs += ucbinc_tot;
-		numOfUCs -= ucbdec_tot;
 	}
 
 	req_m2c.write(-1);
@@ -639,12 +678,12 @@ void fysat(hls::vector<length, SDSIZE> ol_len_off[], hls::vector<clength, CDSIZE
 #pragma HLS DATAFLOW
 #pragma HLS STREAM variable=upd_m2b depth=4096
 #pragma HLS STREAM variable=upd_m2b_arr depth=4096
-#pragma HLS STREAM variable=clen_c2m depth=4096
-#pragma HLS STREAM variable=vars_c2m depth=4096
-#pragma HLS STREAM variable=req_m2c depth=4096
-#pragma HLS STREAM variable=rsp_c2b depth=4096
-#pragma HLS STREAM variable=rsp_b2m depth=4096
-#pragma HLS STREAM variable=req_m2l depth=4096
+#pragma HLS STREAM variable=clen_c2m depth=1024
+#pragma HLS STREAM variable=vars_c2m depth=1024
+#pragma HLS STREAM variable=req_m2c depth=32
+#pragma HLS STREAM variable=rsp_c2b depth=512
+#pragma HLS STREAM variable=rsp_b2m depth=32
+#pragma HLS STREAM variable=req_m2l depth=32
 #pragma HLS STREAM variable=rsp_l2m_arr depth=4096
 #pragma HLS STREAM variable=rsp_l2m_arr_f depth=4096
 

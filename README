@@ -19,3 +19,5 @@ make TARGET=hw PLATFORM=xilinx_u280_xdma_201920_3 all
 $ <exe file> <XCLBIN File> <fileName> <seed> <maxFlips> <k> <r>
 
 ex) $ fsat.exe fsat.xclbin k3-r4.26-v600-c2556-043.cnf 0 10000000 16 640
+
+readme modification
