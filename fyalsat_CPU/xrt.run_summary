@@ -7,17 +7,13 @@
     "generation": {
         "this_file": "\/home\/kcs\/src\/project_data\/Vitis_Accel_Examples\/fyalsat\/fyalsat_CPU\/xrt.run_summary",
         "source": "vp",
-        "PID": "31356",
-        "timestamp": "1689859404092"
+        "PID": "23486",
+        "timestamp": "1690308849096"
     },
     "files": [
         {
             "name": "opencl_trace.csv",
             "type": "VP_TRACE"
-        },
-        {
-            "name": "summary.csv",
-            "type": "PROFILE_SUMMARY"
         }
     ]
 }

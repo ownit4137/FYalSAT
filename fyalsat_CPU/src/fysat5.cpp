@@ -3,18 +3,17 @@
 extern "C" {
 
 inline int psrandom(int& seed) {
-	int s = seed;
-    bool b_32 = s >> 31;
-    bool b_22 = (s << 10) >> 31;
-    bool b_2 = (s << 30) >> 31;
-    bool b_1 = (s << 31) >> 31;
-    int new_bit = b_32 ^ b_22 ^ b_2 ^ b_1;
-    new_bit = new_bit << 30;
-    
-    s = s >> 1;
-    s |= new_bit; 
-	seed = s;
-    return s;
+	ap_uint<32> lfsr = seed;
+	bool b_32 = lfsr.get_bit(32-32);
+	bool b_22 = lfsr.get_bit(32-22);
+	bool b_2 = lfsr.get_bit(32-2);
+	bool b_1 = lfsr.get_bit(32-1);
+	bool new_bit = b_32 ^ b_22 ^ b_2 ^ b_1;
+	lfsr = lfsr >> 1;
+	lfsr.set_bit(31, 0);
+	lfsr.set_bit(30, new_bit);
+	seed = lfsr.to_int();
+	return lfsr.to_int();
 }
 
 inline int sliceRand(int r1, int r2, int num) {
@@ -235,41 +234,47 @@ void mod_loc() {
 
 	// std::cout << ll.vidx << " " << stadd << " " << ll.l1size + ll.l2size << " | ";
 
-	loc_req: for (int i = 0; i < ll.l1size + ll.l2size; i++) {
+	int i = 0;
+	loc_req: while (i < ll.l1size + ll.l2size) {
+#pragma HLS PIPELINE II = 1
+		if (!rsp_l2m_arr.full() && !rsp_l2m_arr_f.full()) {
 
-		hls::vector<int, DSIZE> rspol = VarsOccList_c[stadd + i];
-		rsp_ol temp;
-		loc_1line1: for (int j = 0; j < DSIZE; j++) {
+			hls::vector<int, DSIZE> rspol = VarsOccList_c[stadd + i];
+			rsp_ol temp;
+			loc_1line1: for (int j = 0; j < DSIZE; j++) {
 #pragma HLS UNROLL
-			temp.oidx[j] = rspol[j];
+				temp.oidx[j] = rspol[j];
 
-			// std::cout << temp.oidx[j] << " ";
+				// std::cout << temp.oidx[j] << " ";
 
-			if (temp.oidx[j] < 0 || temp.oidx[j] > Ncls) {
-				std::cout << temp.oidx[j] << "temp.oidx[j] err" << std::endl;
-				exit(0);
+				if (temp.oidx[j] < 0 || temp.oidx[j] > Ncls) {
+					std::cout << temp.oidx[j] << "temp.oidx[j] err" << std::endl;
+					exit(0);
+				}
 			}
-		}
 
-		if (dir) {
-			if (i < ll.l1size) {
-				// std::cout << " +| ";
-				rsp_l2m_arr.write(temp);
+			if (dir) {
+				if (i < ll.l1size) {
+					// std::cout << " +| ";
+					rsp_l2m_arr.write(temp);
+				}
+				else {
+					// std::cout << " -| ";
+					rsp_l2m_arr_f.write(temp);
+				}
 			}
 			else {
-				// std::cout << " -| ";
-				rsp_l2m_arr_f.write(temp);
+				if (i < ll.l2size) {
+					// std::cout << " -| ";
+					rsp_l2m_arr_f.write(temp);
+				}
+				else {
+					// std::cout << " +| ";
+					rsp_l2m_arr.write(temp);
+				}
 			}
-		}
-		else {
-			if (i < ll.l2size) {
-				// std::cout << " -| ";
-				rsp_l2m_arr_f.write(temp);
-			}
-			else {
-				// std::cout << " +| ";
-				rsp_l2m_arr.write(temp);
-			}
+
+			i++;
 		}
 	}
 
@@ -321,17 +326,26 @@ void mod_cls_2() {
 		hls::vector<int, DSIZE> t = ClauseList_c[cidx * (K / DSIZE) + b];
 		int size = (b == num_blk - 1) ? ((clen - 1) % DSIZE) + 1 : DSIZE;
 	
-		for (int i = 0; i < size; i++) {
-			rsp_c2b.write(t[i]);
-			if (vaArr_c[ABS(t[i])] == (t[i] > 0)) {
-				cnt++;
-				// std::cout << t[i] << " ";
-			}
-			else {
-				// std::cout << "!" << t[i] << " ";
+
+		int i = 0;
+		while (i < size) {
+			if (!rsp_c2b.full()) {
+				rsp_c2b.write(t[i]);
+				if (vaArr_c[ABS(t[i])] == (t[i] > 0)) {
+					cnt++;
+
+					// std::cout << t[i] << " ";
+				}
+				else {
+					// std::cout << "!" << t[i] << " ";
+				}
+
+				i++;
 			}
 		}
 	}
+
+	std::cout << std::endl;
 
 	if (cnt != 0) {
 		std::cout << cidx << " " << cnt << "cost err" << std::endl;
@@ -437,20 +451,28 @@ void mod_break_3() {
 	temp = upd_m2b.read();
 	b2len = temp.val;
 
-	bv_upd_d1: for (int b = 0; b < b1len + b2len; b++) {
-		upd_bv_arr updline = upd_m2b_arr.read();
+	int b = 0;
+	bv_upd_d1: while (b < b1len + b2len) {
 
-		d1_1line: for (int i = 0; i < DSIZE; i++) {
-			bscore upd = bs_dif_partd_c[updline.vidx[i]][i];
-			if (updline.vidx[i] != -1) {
-				upd = upd + updline.val[i];
+		if (!upd_m2b_arr.empty()) {
+#pragma HLS PIPELINE II = 1
+			upd_bv_arr updline = upd_m2b_arr.read();
 
-				if (ABS(updline.val[i]) != 1) {
-					std::cout << updline.val[i] << "updline.val[i] err" << std::endl;
-					exit(0);
+			d1_1line: for (int i = 0; i < DSIZE; i++) {
+#pragma HLS UNROLL
+				bscore upd = bs_dif_partd_c[updline.vidx[i]][i];
+				if (updline.vidx[i] != -1) {
+					upd = upd + updline.val[i];
+
+					if (ABS(updline.val[i]) != 1) {
+						std::cout << updline.val[i] << "updline.val[i] err" << std::endl;
+						exit(0);
+					}
 				}
+				bs_dif_partd_c[updline.vidx[i]][i] = upd;
 			}
-			bs_dif_partd_c[updline.vidx[i]][i] = upd;
+
+			b++;
 		}
 	}
 	
@@ -459,7 +481,7 @@ void mod_break_3() {
 	bsArr_c[temp.vidx] = prev + (bscore)temp.val;
 }
 
-void upd_l2m_arr(int flip, int var_flip, int b1len,
+void upd_l2m_arr(int var_flip, int b1len,
 						int& ucbdec_tot, int& bvinc_tot) {
 	
 	int t = 0;
@@ -480,13 +502,8 @@ void upd_l2m_arr(int flip, int var_flip, int b1len,
 				bscore tbvval = 0;
 
 				if (cn > 0) {
-					
 					int row = cn / DSIZE;
 					cost cost = cost_partd_c[row][i];
-
-					// if (flip > 130) {
-					// 	std::cout << var_flip << " is in " << cn << " cost will + " << (int)cost << std::endl;
-					// }
 
 					if (cost > K) {
 						std::cout << cost << " cost > K" << std::endl;
@@ -585,7 +602,7 @@ void upd_l2m_arr(int flip, int var_flip, int b1len,
 	}
 }
 
-void upd_l2m_arr_f(int flip, int var_flip, int b2len,
+void upd_l2m_arr_f(	int var_flip, int b2len,
 							int& ucbinc_tot, int& bvdec_tot) {
 
 	int t = 0;
@@ -614,10 +631,6 @@ void upd_l2m_arr_f(int flip, int var_flip, int b2len,
 						std::cout << cost << " cost > K" << std::endl;
 						exit(0);
 					}
-
-					// if (flip > 130) {
-					// 	std::cout << var_flip << " is in " << cn << " cost will -" << (int)cost << std::endl;
-					// }
 
 					tl_XORed_partd_c[row][i] = (cls)(critv ^ ABS(var_flip));
 
@@ -744,8 +757,6 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 
 		for (int i = 0; i < num_blk; i++) {
 			int lit = vars_c2m.read();
-
-			// std::cout << lit << " ";
 			if (vaArr_c[ABS(lit)] == (lit > 0)) {
 				totcost++;
 				tl = tl ^ ABS(lit);
@@ -761,10 +772,6 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 			numOfUCs++;
 			UCB_partd_len_c[col_ucb]++;
 
-			if (UCB_partd_len_c[col_ucb] >= (UCBSIZE / DSIZE)) {
-				std::cout << "ucblen error: " << UCB_partd_len_c[col_ucb] << std::endl;
-			}
-
 		}
 		else if (totcost == 1) {
 			upd_bv upd;
@@ -772,10 +779,6 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 			upd.val = +1;
 			upd_m2b.write(upd);
 		}
-
-		// if (totcost == 0) {
-		// 	std::cout << c << " is in " << posInUCB_c[c / DSIZE][c % DSIZE] << " but val is " << UCB_partd_c[posInUCB_c[c / DSIZE][c % DSIZE]][i] << std::endl;
-		// }
 
 
 		int row = c / DSIZE;
@@ -810,22 +813,9 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 
 	std::cout << "init fin" << std::endl;
 
-	for (int i = 0; i < DSIZE; i++) {
-		int row_ucb = UCB_partd_len_c[i];
-		for (int j = 0; j < row_ucb; j++) {
 
-			int cidx = UCB_partd_c[j][i];
-			int clen = cls_len_c[cidx];
-			int num_blk = ((clen - 1) / DSIZE) + 1;
-
-			if (cidx != UCB_partd_c[posInUCB_c[cidx / DSIZE][cidx % DSIZE]][i]) {
-				std::cout << cidx << " is in " << posInUCB_c[cidx / DSIZE][cidx % DSIZE] << " but val is " << UCB_partd_c[posInUCB_c[cidx / DSIZE][cidx % DSIZE]][i] << std::endl;
-			}
-		}
-	}
-
-	flip: for (unsigned long long f = 0; f < maxFlip; f++) {
-		if (f % (maxFlip / 5) == 0) {
+	flip: for (unsigned long long f = 0; f <= maxFlip; f++) {
+		if (true) {// if (f % (maxFlip / 5) == 0) {
 			std::cout << f << " " << numOfUCs << std::endl;
 		}
 
@@ -855,7 +845,7 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 		int ucrow = sliceRand(rand1, rand2, (int)UCB_partd_len_c[uccol]);
 		int ucnum = UCB_partd_c[ucrow][uccol];
 
-		// std::cout << rand1 << " " << rand2 << " " << ucrow << " " << ucnum << std::endl;
+		std::cout << rand1 << " " << rand2 << " " << ucrow << " " << ucnum << std::endl;
 
 
 		if (ucrow >= UCB_partd_len_c[uccol] || ucrow < 0) {
@@ -926,12 +916,12 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 		//std::cout << 5 << std::endl;
 
 		if (var_flip < 0) {
-			upd_l2m_arr(f, var_flip, b1len, ucbdec_tot, bvinc_tot); 
-			upd_l2m_arr_f(f, var_flip, b2len, ucbinc_tot, bvdec_tot); 
+			upd_l2m_arr(var_flip, b1len, ucbdec_tot, bvinc_tot); 
+			upd_l2m_arr_f(var_flip, b2len, ucbinc_tot, bvdec_tot); 
 		}
 		else {
-			upd_l2m_arr_f(f, var_flip, b2len, ucbinc_tot, bvdec_tot); 
-			upd_l2m_arr(f, var_flip, b1len, ucbdec_tot, bvinc_tot); 
+			upd_l2m_arr_f(var_flip, b2len, ucbinc_tot, bvdec_tot); 
+			upd_l2m_arr(var_flip, b1len, ucbdec_tot, bvinc_tot); 
 		}
 
 		upd_bv bv_last;
@@ -950,51 +940,6 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 		}
 
 		mod_break_3();
-
-		for (int i = 0; i < DSIZE; i++) {
-			int row_ucb = UCB_partd_len_c[i];
-
-			// if (i == 11) {
-			// 	std::cout << UCB_partd_c[8][i] << " | "  << UCB_partd_c[3][i] << std::endl;
-			// 	std::cout << posInUCB_c[1259 / DSIZE][1259 % DSIZE] << " " << posInUCB_c[363 / DSIZE][363 % DSIZE] << std::endl;
-			// }
-			for (int j = 0; j < row_ucb; j++) {
-
-				int cidx = UCB_partd_c[j][i];
-				int clen = cls_len_c[cidx];
-				int num_blk = ((clen - 1) / DSIZE) + 1;
-
-				if (cidx != UCB_partd_c[posInUCB_c[cidx / DSIZE][cidx % DSIZE]][i]) {
-					std::cout << cidx << " is in " << posInUCB_c[cidx / DSIZE][cidx % DSIZE] << " but val is " << UCB_partd_c[posInUCB_c[cidx / DSIZE][cidx % DSIZE]][i] << std::endl;
-					exit(0);
-				}
-
-				int cnt = 0;
-				for (int b = 0; b < num_blk; b++) {
-					hls::vector<int, DSIZE> t = ClauseList_c[cidx * (K / DSIZE) + b];
-					int size = (b == num_blk - 1) ? ((clen - 1) % DSIZE) + 1 : DSIZE;
-				
-					for (int i = 0; i < size; i++) {
-						if (vaArr_c[ABS(t[i])] == (t[i] > 0)) {
-							cnt++;
-							// std::cout << t[i] << " ";
-						}
-						else {
-							// std::cout << "!" << t[i] << " ";
-						}
-					}
-				}
-
-				if (cnt != 0) {
-					std::cout << cidx << " in UCB[" << j << " / " << row_ucb << "][" << i << "] " << cnt << "cost errerrerr" << std::endl;
-					exit(0);
-				}
-			}
-
-			// if (f == 134) {
-			// 	std::cout << std::endl;
-			// }
-		}
 	}
 
 	req_m2c.write(-1);

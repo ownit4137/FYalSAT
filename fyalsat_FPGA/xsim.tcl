@@ -1,1 +1,1 @@
-log_wave -r /emu_wrapper/emu_i/vadd_1/*
+log_wave -r /emu_wrapper/emu_i/fysat_1/*

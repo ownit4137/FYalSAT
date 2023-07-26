@@ -10,7 +10,7 @@
 #include "wsat_hls.h"
 
 #define DSSIZE_C 1500000000
-#define DSSIZE 100000000
+#define DSSIZE 70000000
 #define MAX_HBM_PC_COUNT 32
 #define PC_NAME(n) n | XCL_MEM_TOPOLOGY
 const int pc[MAX_HBM_PC_COUNT] = {

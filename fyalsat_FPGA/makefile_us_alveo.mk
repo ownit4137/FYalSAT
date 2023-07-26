@@ -80,7 +80,7 @@ EMCONFIG_DIR = $(TEMP_DIR)
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin p12-k7-001.cnf 0 50 16 640
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin C3-2-31.cnf 1689822051 100 16 15000
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin n_queens32.dimacs 0 10000 32 640
-CMD_ARGS = $(BUILD_DIR)/fysat.xclbin /olsq2_cnf_small/9_6_2.txt 1689821985 100000 32 512
+CMD_ARGS = $(BUILD_DIR)/fysat.xclbin /olsq2_cnf_small/16_16_2.txt 0 50000 0 0
 
 
 VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:HBM[1]

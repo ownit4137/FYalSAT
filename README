@@ -16,8 +16,13 @@ make TARGET=hw PLATFORM=xilinx_u280_xdma_201920_3 all
 
 3-1. Run application
 - put SAT instances in 'test' folder
-$ <exe file> <XCLBIN File> <fileName> <seed> <maxFlips> <k> <r>
+$ <exe file> <XCLBIN file> <fileName> <seed> <maxFlips> <k> <r>
+
+<XCLBIN file>: in './fyalsat_FPGA/build_dir.hw.<platform>/'
+<maxFlips>: The number of flips
+<k>: The maximum number of variables allowed in a single clause
+<r>: The maximum number of clauses where a variable can appear
 
 ex) $ fsat.exe fsat.xclbin k3-r4.26-v600-c2556-043.cnf 0 10000000 16 640
 
-readme modification
+

@@ -148,6 +148,22 @@ void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int,
 		// std::cout << v << " " << ol_len_off[v] << " " << ol_len_off[v + 1] << std::endl;
 	}
 
+	// for (int v = 0; v < numVars * 2; v++) {
+	// 	int st = ol_len_off[v];
+	// 	int ed = ol_len_off[v + 1];
+
+	// 	std::cout << v << " " << ed-st << " | ";
+
+	// 	for (int l = st; l < ed; l++) {
+	// 		hls::vector<int, DSIZE> rspol = VarsOccList_c[l];
+	// 		for (int i = 0; i < DSIZE; i++) {
+	// 			std::cout << rspol[i] << " ";
+	// 		}
+	// 	}
+
+	// 	std::cout << std::endl;
+	// 	// std::cout << v << " " << ol_len_off[v] << " " << ol_len_off[v + 1] << std::endl;
+	// }
 
 	std::cout << "numvars: " << numVars << " numcls: " << numClauses << " maxk: " << maxk << " maxr: " << maxr << "\n";
 }

@@ -7,29 +7,13 @@
     "generation": {
         "this_file": "\/home\/kcs\/src\/project_data\/Vitis_Accel_Examples\/fyalsat\/fyalsat_FPGA\/xrt.run_summary",
         "source": "vp",
-        "PID": "2233",
-        "timestamp": "1689846564713"
+        "PID": "29031",
+        "timestamp": "1690346944608"
     },
     "files": [
         {
             "name": "opencl_trace.csv",
             "type": "VP_TRACE"
-        },
-        {
-            "name": "xilinx_u280_xdma_201920_3-0-fysat.link.wdb",
-            "type": "WAVEFORM_DATABASE"
-        },
-        {
-            "name": "xilinx_u280_xdma_201920_3-0-fysat.link.wcfg",
-            "type": "WAVEFORM_CONFIGURATION"
-        },
-        {
-            "name": "timeline_kernels.csv",
-            "type": "KERNEL_TRACE"
-        },
-        {
-            "name": "summary.csv",
-            "type": "PROFILE_SUMMARY"
         }
     ]
 }

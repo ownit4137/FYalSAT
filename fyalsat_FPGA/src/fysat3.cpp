@@ -2,20 +2,38 @@
 
 extern "C" {
 
-inline int psrandom(int& seed) {
+// inline int psrandom(int& seed) {
+// 	ap_uint<32> lfsr = seed;
+// 	bool b_32 = lfsr.get_bit(32-32);
+// 	bool b_22 = lfsr.get_bit(32-22);
+// 	bool b_2 = lfsr.get_bit(32-2);
+// 	bool b_1 = lfsr.get_bit(32-1);
+// 	bool new_bit = b_32 ^ b_22 ^ b_2 ^ b_1;
+// 	lfsr = lfsr >> 1;
+// 	lfsr.set_bit(31, 0);
+// 	lfsr.set_bit(30, new_bit);
+// 	seed = lfsr.to_int();
+// 	return lfsr.to_int();
+// }
+
+inline int psrandom(int seed) {
+	seed = seed + 10;
 	int s = seed;
-    bool b_32 = s >> 31;
-    bool b_22 = (s << 10) >> 31;
-    bool b_2 = (s << 30) >> 31;
-    bool b_1 = (s << 31) >> 31;
-    int new_bit = b_32 ^ b_22 ^ b_2 ^ b_1;
-    new_bit = new_bit << 30;
-    
-    s = s >> 1;
-    s |= new_bit; 
-	seed = s;
-    return s;
+	return s;
 }
+
+// int s = seed;
+// bool b_32 = s >> 31;
+// bool b_22 = (s << 10) >> 31;
+// bool b_2 = (s << 30) >> 31;
+// bool b_1 = (s << 31) >> 31;
+// bool new_bit = b_32 ^ b_22 ^ b_2 ^ b_1;
+// new_bit = new_bit << 30;
+// s = s >> 1;
+// s |= new_bit; 
+// s = s >> 1;
+
+
 
 inline int sliceRand(int r1, int r2, int num) {
 	if (num == 1) return 0;
@@ -93,69 +111,103 @@ void mod_cls (	hls::stream<int>& clen_c2m, hls::stream<int>& vars_c2m,
 		}
 	}
 
+	// unsigned long long f = 0;
+	// flip_cls: while (f < maxFlip) {
+
+		//if (!req_m2c.empty()) {
 	flip_cls: for (unsigned long long f = 0; f < maxFlip; f++) {
 
-		int cidx = req_m2c.read();
-		if (cidx == -1) {
-			rsp_c2b.write(-1);
-			break;
-		}
-
-		int clen = cls_len[cidx];
-		int num_blk = ((clen - 1) / DSIZE) + 1;
-
-		rsp_c2b.write(clen);
-
-		uc_send: for (int b = 0; b < num_blk; b++) {
-			hls::vector<int, DSIZE> t = ClauseList[cidx * (k / DSIZE) + b];
-			int size = (b == num_blk - 1) ? ((clen - 1) % DSIZE) + 1 : DSIZE;						// mod 2
-
-			uc_req_1line: for (int i = 0; i < size; i++) {
-#pragma HLS PIPELINE II = 1
-				rsp_c2b.write(t[i]);
+			int cidx = req_m2c.read();
+			if (cidx == -1) {
+				rsp_c2b.write(-1);
+				break;
 			}
-		}
+
+			int clen = cls_len[cidx];
+			int num_blk = ((clen - 1) / DSIZE) + 1;
+
+			rsp_c2b.write(clen);
+
+			uc_send: for (int b = 0; b < num_blk; b++) {
+				hls::vector<int, DSIZE> t = ClauseList[cidx * (k / DSIZE) + b];
+				int size = (b == num_blk - 1) ? ((clen - 1) % DSIZE) + 1 : DSIZE;						// mod 2
+
+// 				int i = 0;
+// 				uc_req_1line: while (i < size) {
+// #pragma HLS PIPELINE II = 1
+// 					if (!rsp_c2b.full()) {
+// 						rsp_c2b.write(t[i]);
+// 						i++;
+// 					}
+// 				}
+
+				uc_req_1line: for (int i = 0; i < size; i++) {
+#pragma HLS PIPELINE II = 1
+					rsp_c2b.write(t[i]);
+				}
+
+
+			}
+
+		// 	f++;
+		// }
 	}
 }
 
 void mod_loc( hls::stream<num_line>& req_m2l, hls::stream<rsp_ol>& rsp_l2m_arr, hls::stream<rsp_ol>& rsp_l2m_arr_f,
 			  hls::vector<int, DSIZE> VarsOccList[], unsigned long long maxFlip) {
 		
+	// unsigned long long f = 0;
+	// flip_loc: while (f < maxFlip) {
+		
+	// 	if (!req_m2l.empty()) {
 	flip_loc: for (unsigned long long f = 0; f < maxFlip; f++) {
 
-		num_line ll = req_m2l.read();
-		if (ll.vidx == 0) break;
 
-		bool dir = ll.vidx < 0;
-		int idx = ll.vidx < 0 ? ll.vidx : -ll.vidx;
-		int stadd = ll.l1start < ll.l2start ? ll.l1start : ll.l2start;
+			num_line ll = req_m2l.read();
+			if (ll.vidx == 0) break;
 
-		loc_req: for (int i = 0; i < ll.l1size + ll.l2size; i++) {
+			bool dir = ll.vidx < 0;
+			int idx = ll.vidx < 0 ? ll.vidx : -ll.vidx;
+			int stadd = ll.l1start < ll.l2start ? ll.l1start : ll.l2start;
+
+
+// 			int i = 0;
+// 			loc_req: while (i < ll.l1size + ll.l2size) {
+// #pragma HLS PIPELINE II = 1
+// 				if (!rsp_l2m_arr.full() && !rsp_l2m_arr_f.full()) {
+			loc_req: for (int i = 0; i < ll.l1size + ll.l2size; i++) {
 #pragma HLS PIPELINE II = 1
-			hls::vector<int, DSIZE> rspol = VarsOccList[stadd + i];
-			rsp_ol temp;
-			loc_1line1: for (int j = 0; j < DSIZE; j++) {
+				hls::vector<int, DSIZE> rspol = VarsOccList[stadd + i];
+				rsp_ol temp;
+				loc_1line1: for (int j = 0; j < DSIZE; j++) {
 #pragma HLS UNROLL
-				temp.oidx[j] = rspol[j];
-			}
+					temp.oidx[j] = rspol[j];
+				}
 
-			if (dir) {
-				if (i < ll.l1size) {
-					rsp_l2m_arr.write(temp);
+				if (dir) {
+					if (i < ll.l1size) {
+						rsp_l2m_arr.write(temp);
+					}
+					else {
+						rsp_l2m_arr_f.write(temp);
+					}
 				}
 				else {
-					rsp_l2m_arr_f.write(temp);
+					if (i < ll.l2size) {
+						rsp_l2m_arr_f.write(temp);
+					}
+					else {
+						rsp_l2m_arr.write(temp);
+					}
 				}
+
+				//i++;
 			}
-			else {
-				if (i < ll.l2size) {
-					rsp_l2m_arr_f.write(temp);
-				}
-				else {
-					rsp_l2m_arr.write(temp);
-				}
-			}
-		}
+			// }
+
+		// 	f++;
+		// }
 	}
 }
 
@@ -195,7 +247,10 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 
 	/////////////////////// [[  FLIP  ]] //////////////////////////
 
+	// unsigned long long f = 0;
+	// flip_brk: while (f < maxFlip) {
 	flip_brk: for (unsigned long long f = 0; f < maxFlip; f++) {
+		/////////////////////// [[  BV RSP  ]] //////////////////////////
 
 		int var_flip;
 
@@ -205,10 +260,9 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 		int probs[MAXK];
 		int sumProb = 0;
 
+		// if (!rsp_c2b.empty()) {
 		int clen = rsp_c2b.read();
 		if (clen == -1) break;
-
-		ap_wait();
 
 		lookup_break: for (int i = 0; i < clen; i++) {
 #pragma HLS PIPELINE II = 1
@@ -228,8 +282,9 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 			tempcls[i] = vidx;
 		}
 
-		int r = psrandom(seed);
-		int r8b = r & 255;
+		seed = psrandom(seed);
+
+		int r8b = seed & 255;
 		int randPosition = r8b * (sumProb / 256);
 
 		choose_var: for (int i = 0; i < clen; i++) {
@@ -258,6 +313,7 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 
 		/////////////////////// [[  BV UPD  ]] //////////////////////////
 
+
 		ap_wait();
 
 		upd_bv temp;
@@ -267,23 +323,34 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 		temp = upd_m2b.read();
 		b2len = temp.val;
 
+		// int b = 0;
+		// bv_upd_d1: while (b < b1len + b2len) {
+
+		// 	if (!upd_m2b_arr.empty()) {
+
 		bv_upd_d1: for (int b = 0; b < b1len + b2len; b++) {
 #pragma HLS PIPELINE II = 1
-			upd_bv_arr updline = upd_m2b_arr.read();
+				upd_bv_arr updline = upd_m2b_arr.read();
 
-			d1_1line: for (int i = 0; i < DSIZE; i++) {
+				d1_1line: for (int i = 0; i < DSIZE; i++) {
 #pragma HLS UNROLL
-				bscore upd = bs_dif_partd[updline.vidx[i]][i];
-				if (updline.vidx[i] != -1) {
-					upd = upd + updline.val[i];
+					bscore upd = bs_dif_partd[updline.vidx[i]][i];
+					if (updline.vidx[i] != -1) {
+						upd = upd + updline.val[i];
+					}
+					bs_dif_partd[updline.vidx[i]][i] = upd;
 				}
-				bs_dif_partd[updline.vidx[i]][i] = upd;
-			}
+			// 	b++;
+			// }
 		}
-	
+		
+
 		temp = upd_m2b.read();
 		bscore prev = bsArr[temp.vidx];
 		bsArr[temp.vidx] = prev + (bscore)temp.val;
+
+		// 	f++;
+		// }
 	}
 }
 
@@ -473,8 +540,8 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 	
 	init_var: for (int i = 0; i <= Nvar; i++) {
 #pragma HLS PIPELINE II = 1
-		int r = psrandom(seed);
-		vaArr[i] = r % 2 == 0 ? true : false;
+		seed = psrandom(seed);
+		vaArr[i] = seed % 2 == 0 ? true : false;
 		// vaArr_c[i] = i % 2 == 0 ? true : false;
 	}
 
@@ -526,10 +593,18 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 
 	int rand1, rand2;
 	rand1 = psrandom(seed);
-	rand2 = psrandom(seed); // seed
+	rand2 = psrandom(rand1); // seed
 
 
 ///////
+
+
+
+	// unsigned long long f = 0;
+	// flip: while (f < maxFlip) {
+		
+		//if (!req_m2c.full()) {
+
 
 	flip: for (unsigned long long f = 0; f < maxFlip; f++) {
 
@@ -549,8 +624,8 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 
 		req_m2c.write(ucnum);
 
-		rand1 = psrandom(seed);
-		rand2 = psrandom(seed);
+		rand1 = psrandom(rand2);
+		rand2 = psrandom(rand1);
 
 		ap_wait();
 
@@ -576,7 +651,6 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 		temp_size.vidx = f;
 		temp_size.val = b1len;
 		upd_m2b.write(temp_size);
-		temp_size.vidx = numOfUCs;
 		temp_size.val = b2len;
 		upd_m2b.write(temp_size);
 
@@ -585,8 +659,6 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 
 		int ucbinc_tot = 0;
 		int bvdec_tot = 0;
-
-		ap_wait();
 
 		if (var_flip < 0) {
 			upd_l2m_arr(var_flip, b1len, rsp_l2m_arr, rsp_l2m_arr_f, upd_m2b_arr, cost_partd, tl_XORed_partd, UCB_partd_len, posInUCB, UCB_partd, ucbdec_tot, bvinc_tot); 
@@ -604,6 +676,9 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 
 		numOfUCs += ucbinc_tot;
 		numOfUCs -= ucbdec_tot;
+
+			//f++;
+		//}
 	}
 
 	req_m2c.write(-1);
