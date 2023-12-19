@@ -1,45 +1,3 @@
-#
-# Copyright 2019-2021 Xilinx, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# makefile-generator v1.0.3
-#
-
-############################## Help Section ##############################
-ifneq ($(findstring Makefile, $(MAKEFILE_LIST)), Makefile)
-help:
-	$(ECHO) "Makefile Usage:"
-	$(ECHO) "  make all TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform>"
-	$(ECHO) "      Command to generate the design for specified Target and Shell."
-	$(ECHO) ""
-	$(ECHO) "  make run TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform>"
-	$(ECHO) "      Command to run application in emulation."
-	$(ECHO) ""
-	$(ECHO) "  make build TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform>"
-	$(ECHO) "      Command to build xclbin application."
-	$(ECHO) ""
-	$(ECHO) "  make host"
-	$(ECHO) "      Command to build host application."
-	$(ECHO) ""
-	$(ECHO) "  make clean "
-	$(ECHO) "      Command to remove the generated non-hardware files."
-	$(ECHO) ""
-	$(ECHO) "  make cleanall"
-	$(ECHO) "      Command to remove all the generated files."
-	$(ECHO) ""
-
-endif
-
 ############################## Setting up Project Variables ##############################
 TARGET := hw
 VPP_LDFLAGS :=
@@ -60,7 +18,7 @@ LDFLAGS += -L$(XILINX_XRT)/lib -pthread -lOpenCL
 PLATFORM_BLOCKLIST += nodma 
 ############################## Setting up Host Variables ##############################
 #Include Required Host Source Files
-CXXFLAGS += -I$(XF_PROJ_ROOT)/common/includes/xcl2 -I/opt/Xilinx/Vitis_HLS/2021.1/include
+CXXFLAGS += -I$(XF_PROJ_ROOT)/common/includes/xcl2 -I$(XF_PROJ_ROOT)/common/include
 HOST_SRCS += $(XF_PROJ_ROOT)/common/includes/xcl2/xcl2.cpp ./src/host.cpp 
 # Host compiler global settings
 CXXFLAGS += -fmessage-length=0
@@ -74,12 +32,17 @@ EXECUTABLE = ./fyalsat.exe
 EMCONFIG_DIR = $(TEMP_DIR)
 
 
-# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/k7-r90-v60-c5267.cnf 19437907
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin k7-r90-v60-c5267.cnf 0 100000000 0 0
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin k3-r4.26-v600-c2556-043.cnf 13480327 10000000 16 16
-# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin test/p12-k7-001.cnf 0 50 16 640
-CMD_ARGS = $(BUILD_DIR)/fysat.xclbin C3-2-31.cnf 0 5000000 16 15000
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin p12-k7-001.cnf 0 10000000 16 640
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin C3-2-31.cnf 0 5000000 16 15000
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin olsq2_cnf_small/9_6_2.txt 0 10000000 0 0 # 1690171019 962
 # CMD_ARGS = $(BUILD_DIR)/fysat.xclbin n_queens32.dimacs 1689498293 1000 32 640
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin si2-b03m-m800.cnf 0 10 0 0
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin ../../../../sat_sw/d_2022/MVD_ADS_S10_5_6.cnf 0 10 0 0
+# CMD_ARGS = $(BUILD_DIR)/fysat.xclbin ../../../../sat_sw/d_2022/MVD_ADS_S10_5_6.cnf 1691165424 10 0 0
+CMD_ARGS = $(BUILD_DIR)/fysat.xclbin ../../../../sat_sw/gen/test.cnf 0 1000 0 0
+
 
 VPP_FLAGS += --connectivity.sp fysat_1.ol_len_off:HBM[1]
 VPP_FLAGS += --connectivity.sp fysat_1.cls_len_off:HBM[0]

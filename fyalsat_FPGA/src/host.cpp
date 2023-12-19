@@ -10,7 +10,7 @@
 #include "wsat_hls.h"
 
 #define DSSIZE_C 1500000000
-#define DSSIZE 70000000
+#define DSSIZE 100000000
 #define MAX_HBM_PC_COUNT 32
 #define PC_NAME(n) n | XCL_MEM_TOPOLOGY
 const int pc[MAX_HBM_PC_COUNT] = {
@@ -19,7 +19,7 @@ const int pc[MAX_HBM_PC_COUNT] = {
     PC_NAME(16), PC_NAME(17), PC_NAME(18), PC_NAME(19), PC_NAME(20), PC_NAME(21), PC_NAME(22), PC_NAME(23),
     PC_NAME(24), PC_NAME(25), PC_NAME(26), PC_NAME(27), PC_NAME(28), PC_NAME(29), PC_NAME(30), PC_NAME(31)};
 
-short varR_off[MAXNLIT];
+int varR_off[MAXNLIT];
 
 bool verify(int numClauses, std::vector<char, aligned_allocator<char>>& vaArr, 
 			std::vector<clength, aligned_allocator<clength>>& cls_len_off, 

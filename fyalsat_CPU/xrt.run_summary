@@ -1,14 +1,17 @@
 {
     "schema_version": {
         "major": "1",
-        "minor": "2",
+        "minor": "3",
         "patch": "0"
     },
     "generation": {
         "this_file": "\/home\/kcs\/src\/project_data\/Vitis_Accel_Examples\/fyalsat\/fyalsat_CPU\/xrt.run_summary",
         "source": "vp",
-        "PID": "23486",
-        "timestamp": "1690308849096"
+        "PID": "24940",
+        "timestamp": "1702972672509",
+        "flags": [
+            ""
+        ]
     },
     "files": [
         {

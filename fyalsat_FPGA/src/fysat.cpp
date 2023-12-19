@@ -64,7 +64,7 @@ void mod_cls (	hls::stream<int>& clen_c2m, hls::stream<int>& vars_c2m,
 				hls::vector<int, DSIZE> ClauseList[], hls::vector<clength, CDSIZE> cls_len_off[], int numClauses, int k, unsigned long long maxFlip) {
 
 	clength cls_len[MAXNCLS + 1];	//	 ~KMAX
-#pragma HLS bind_storage variable=cls_len impl=uram type=RAM_2P
+#pragma HLS bind_storage variable=cls_len impl=uram type=RAM_S2P
 
 	int Ncls = numClauses;
 	int maxcnt = (Ncls - 1) / CDSIZE + 1;
@@ -163,9 +163,9 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 				hls::stream<int>& rsp_c2b, hls::stream<int>& rsp_b2m, int s, int numVars, unsigned long long maxFlip) {
 	
 	bscore bsArr[MAXNVAR + 1];
-#pragma HLS bind_storage variable=bsArr impl=uram type=RAM_2P
+// #pragma HLS bind_storage variable=bsArr impl=uram type=RAM_S2P
 	bscore bs_dif_partd[MAXNVAR + 1][DSIZE];
-#pragma HLS bind_storage variable=bs_dif_partd impl=uram type=RAM_2P
+// #pragma HLS bind_storage variable=bs_dif_partd impl=uram type=RAM_S2P
 	int seed = s;
 
 	int bs2probs[100] = {40710, 8734, 3655, 1985, 1240, 846, 612, 463, 362, 291, 238, 199, 168, 144, 125, 109, 96, 86, 76, 69,
@@ -243,6 +243,8 @@ void mod_break(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_a
 		rsp_b2m.write(var_flip);
 
 		upd_brk: for (int i = 0; i < clen; i++) {
+#pragma HLS PIPELINE II = 1	
+#pragma HLS dependence variable=bsArr type=inter false
 			int var = tempcls[i];
 			int bv = bsArr[ABS(var)];
 
@@ -297,6 +299,10 @@ inline void upd_l2m_arr(int var_flip, int b1len,
 	cost_inc_loop: while (t < b1len) {
 #pragma HLS pipeline II=1
 
+#pragma HLS dependence variable=cost_partd type=inter false
+#pragma HLS dependence variable=tl_XORed_partd type=inter false
+#pragma HLS dependence variable=UCB_partd_len type=inter false
+
 		if (!rsp_l2m_arr.empty()) {
 			rsp_ol ol_elem = rsp_l2m_arr.read();
 			upd_bv_arr bvdec_1line;
@@ -304,7 +310,7 @@ inline void upd_l2m_arr(int var_flip, int b1len,
 			int bvinc_1line = 0;
 
 			for (int i = 0; i < DSIZE; i++) {
-#pragma HLS UNROLL
+// #pragma HLS UNROLL
 				int cn = ol_elem.oidx[i];
 				int ucbdec = 0;
 				int bvinc = 0;
@@ -367,6 +373,12 @@ inline void upd_l2m_arr_f(	int var_flip, int b2len,
 	cost_dec_loop: while (t < b2len) {
 #pragma HLS pipeline II=1
 
+#pragma HLS dependence variable=cost_partd type=inter false
+#pragma HLS dependence variable=tl_XORed_partd type=inter false
+#pragma HLS dependence variable=UCB_partd_len type=inter false
+#pragma HLS dependence variable=posInUCB type=inter false
+#pragma HLS dependence variable=UCB_partd type=inter false
+
 		if (!rsp_l2m_arr_f.empty()) {
 			rsp_ol ol_elem = rsp_l2m_arr_f.read();
 			upd_bv_arr bvinc_1line;
@@ -374,7 +386,7 @@ inline void upd_l2m_arr_f(	int var_flip, int b2len,
 			int bvdec_1line = 0;
 
 			for (int i = 0; i < DSIZE; i++) {
-#pragma HLS UNROLL
+// #pragma HLS UNROLL
 				int cn = ol_elem.oidx[i];
 				int ucbinc = 0;
 				int bvdec = 0;
@@ -435,9 +447,9 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 	cost cost_partd[MAXNCLS / DSIZE + 1][DSIZE];
 	cls tl_XORed_partd[MAXNCLS / DSIZE + 1][DSIZE];
 #pragma HLS ARRAY_PARTITION variable=tl_XORed_partd complete dim=2
-#pragma HLS bind_storage variable=tl_XORed_partd impl=uram type=RAM_2P
+#pragma HLS bind_storage variable=tl_XORed_partd impl=uram type=RAM_S2P
 #pragma HLS ARRAY_PARTITION variable=cost_partd complete dim=2
-#pragma HLS bind_storage variable=cost_partd impl=uram type=RAM_2P
+#pragma HLS bind_storage variable=cost_partd impl=uram type=RAM_S2P
 
 
 	int numOfUCs = 0;
@@ -446,13 +458,13 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 	cls UCB_partd_len[DSIZE];
 
 #pragma HLS ARRAY_PARTITION variable=UCB_partd complete dim=2
-#pragma HLS bind_storage variable=UCB_partd impl=uram type=RAM_2P
+// #pragma HLS bind_storage variable=UCB_partd impl=uram type=RAM_S2P
 #pragma HLS ARRAY_PARTITION variable=posInUCB complete dim=2
-#pragma HLS bind_storage variable=posInUCB impl=uram type=RAM_2P
+// #pragma HLS bind_storage variable=posInUCB impl=uram type=RAM_S2P
 #pragma HLS ARRAY_PARTITION variable=UCB_partd_len complete dim=1
 
 	length ol_len[MAXNLIT];		// char
-#pragma HLS bind_storage variable=ol_len impl=uram type=RAM_2P
+// #pragma HLS bind_storage variable=ol_len impl=uram type=RAM_S2P
 	bool vaArr[MAXNVAR + 1];	// variable assignment	-> ap_uint<1>
 
 	/////////////////////// [[  INIT  ]] //////////////////////////
@@ -615,6 +627,7 @@ void mod_main(	hls::stream<upd_bv>& upd_m2b, hls::stream<upd_bv_arr>& upd_m2b_ar
 	flipcnt[0] = flips;
 
 	for (int i = 1; i <= Nvar; i++) {
+#pragma HLS pipeline II=1	
 		char tval = (vaArr[i] == true ? 1 : 0);
 		answer[i] = tval;
 	}

@@ -17,7 +17,7 @@ const int pc[MAX_HBM_PC_COUNT] = {
     PC_NAME(16), PC_NAME(17), PC_NAME(18), PC_NAME(19), PC_NAME(20), PC_NAME(21), PC_NAME(22), PC_NAME(23),
     PC_NAME(24), PC_NAME(25), PC_NAME(26), PC_NAME(27), PC_NAME(28), PC_NAME(29), PC_NAME(30), PC_NAME(31)};
 
-short varR_off[MAXNLIT];
+int varR_off[MAXNLIT];
 
 void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int, aligned_allocator<int>>& VarsOccList, std::vector<int, aligned_allocator<int>>& VarsOccList_CPU, 
     std::vector<clength, aligned_allocator<clength>>& cls_len_off, std::vector<length, aligned_allocator<length>>& ol_len_off,
@@ -91,7 +91,7 @@ void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int,
 							break;
 						}
 						if (i == r - 1) {
-							std::cout << "r excessed at " << nextLit << "\n";
+							std::cout << "r excessed at " << nextLit << " " << i << "\n";
 						}
 					}
 				}
@@ -117,6 +117,7 @@ void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int,
 		std::vector<int> waitlist[DSIZE];
 
 		int rlen = varR_off[v];
+
 		int start = ol_len_off[v];
 
 		for (int i = 0; i < rlen; i++) {
@@ -145,24 +146,24 @@ void init(std::vector<int, aligned_allocator<int>>& ClauseList, std::vector<int,
 				break;
 			}
 		}
-		// std::cout << v << " " << ol_len_off[v] << " " << ol_len_off[v + 1] << std::endl;
+		// std::cout << v << " " << rlen << " " << ol_len_off[v] << " " << ol_len_off[v + 1] << std::endl;
 	}
 
 	// for (int v = 0; v < numVars * 2; v++) {
 	// 	int st = ol_len_off[v];
 	// 	int ed = ol_len_off[v + 1];
 
-	// 	std::cout << v << " " << ed-st << " | ";
+	// 	// std::cout << v << " " << ed-st << " | ";
 
-	// 	for (int l = st; l < ed; l++) {
-	// 		hls::vector<int, DSIZE> rspol = VarsOccList_c[l];
-	// 		for (int i = 0; i < DSIZE; i++) {
-	// 			std::cout << rspol[i] << " ";
-	// 		}
-	// 	}
+	// 	// for (int l = st; l < ed; l++) {
+	// 	// 	hls::vector<int, DSIZE> rspol = VarsOccList_c[l];
+	// 	// 	for (int i = 0; i < DSIZE; i++) {
+	// 	// 		std::cout << rspol[i] << " ";
+	// 	// 	}
+	// 	// }
 
-	// 	std::cout << std::endl;
-	// 	// std::cout << v << " " << ol_len_off[v] << " " << ol_len_off[v + 1] << std::endl;
+	// 	// std::cout << std::endl;
+	// 	std::cout << v << " " << ol_len_off[v] << " " << ol_len_off[v + 1] << std::endl;
 	// }
 
 	std::cout << "numvars: " << numVars << " numcls: " << numClauses << " maxk: " << maxk << " maxr: " << maxr << "\n";

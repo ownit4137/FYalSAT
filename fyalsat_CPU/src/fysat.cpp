@@ -461,6 +461,8 @@ void mod_break_3() {
 
 void upd_l2m_arr(int flip, int var_flip, int b1len,
 						int& ucbdec_tot, int& bvinc_tot) {
+
+	// std::cout << var_flip << " | ";
 	
 	int t = 0;
 	cost_inc_loop: while (t < b1len) {
@@ -480,7 +482,8 @@ void upd_l2m_arr(int flip, int var_flip, int b1len,
 				bscore tbvval = 0;
 
 				if (cn > 0) {
-					
+					// std::cout << cn << " ";
+
 					int row = cn / DSIZE;
 					cost cost = cost_partd_c[row][i];
 
@@ -511,7 +514,7 @@ void upd_l2m_arr(int flip, int var_flip, int b1len,
 
 						UCB_partd_len_c[i] = row_ucb - 1;
 
-						// std::cout << var_flip << cn << " ucb delete " << std::endl;
+						// std::cout << var_flip << " " << cn << " ucb delete " << std::endl;
 
 						if (UCB_partd_c[posInUCB_c[replaceElem / DSIZE][i]][i] != replaceElem) {
 							std::cout << "ucbdelete err" << std::endl;
@@ -583,10 +586,14 @@ void upd_l2m_arr(int flip, int var_flip, int b1len,
 			t++;
 		}
 	}
+
+	// std::cout << std::endl;
 }
 
 void upd_l2m_arr_f(int flip, int var_flip, int b2len,
 							int& ucbinc_tot, int& bvdec_tot) {
+
+	// std::cout << var_flip << " | ";
 
 	int t = 0;
 	cost_dec_loop: while (t < b2len) {
@@ -606,6 +613,7 @@ void upd_l2m_arr_f(int flip, int var_flip, int b2len,
 				int tbvval = 0;
 
 				if (cn > 0) {
+					// std::cout << cn << " ";
 					int row = cn / DSIZE;
 					int critv = tl_XORed_partd_c[row][i];
 					cost cost = cost_partd_c[row][i];
@@ -630,7 +638,7 @@ void upd_l2m_arr_f(int flip, int var_flip, int b2len,
 						posInUCB_c[row][i] = row_ucb;
 						UCB_partd_len_c[i] = row_ucb + 1;
 
-						// std::cout << var_flip << cn << " ucb insert " << std::endl;
+						// std::cout << var_flip << " " << cn << " ucb insert " << std::endl;
 
 						if (UCB_partd_c[UCB_partd_len_c[i] - 1][i] != cn) {
 							std::cout << "ucbinsert err" << std::endl;
@@ -695,6 +703,7 @@ void upd_l2m_arr_f(int flip, int var_flip, int b2len,
 			t++;
 		}
 	}
+	// std::cout << std::endl;
 }
 
 void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) {
@@ -761,7 +770,7 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 			numOfUCs++;
 			UCB_partd_len_c[col_ucb]++;
 
-			if (UCB_partd_len_c[col_ucb] >= (UCBSIZE / DSIZE)) {
+			if (UCB_partd_len_c[col_ucb] >= (UCBSIZE / DSIZE) || numOfUCs > UCBSIZE) {
 				std::cout << "ucblen error: " << UCB_partd_len_c[col_ucb] << std::endl;
 			}
 
@@ -888,6 +897,7 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 		int var_flip = rsp_b2m.read();
 		int abs_var_flip = ABS(var_flip);
 
+		// std::cout << f << " " << var_flip << " " << bsArr_c[ABS(var_flip)] << std::endl;
 		if (ABS(var_flip) > numVars) {
 			std::cout << f << " " << var_flip << " > numvars" << std::endl;
 			exit(0);
@@ -907,6 +917,8 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 		ltemp.l2start = b2st;
 		ltemp.l2size = b2len;
 		req_m2l.write(ltemp);
+
+		// std::cout << b1st << " " << b1len << " " << b2st << " " << b2len << " ||\n";
 
 		//std::cout << 4 << std::endl;
 		mod_loc();
@@ -938,6 +950,8 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 		bv_last.vidx = ABS(var_flip);
 		bv_last.val = bvinc_tot - bvdec_tot;
 		upd_m2b.write(bv_last);
+
+		// std::cout << ucbinc_tot << " " << ucbdec_tot << std::endl;
 
 		numOfUCs += ucbinc_tot;
 		numOfUCs -= ucbdec_tot;
@@ -986,7 +1000,7 @@ void mod_main(int numVars, int numClauses, int s, unsigned long long flipcnt[]) 
 				}
 
 				if (cnt != 0) {
-					std::cout << cidx << " in UCB[" << j << " / " << row_ucb << "][" << i << "] " << cnt << "cost errerrerr" << std::endl;
+					std::cout << f << " " << cidx << " in UCB[" << j << " / " << row_ucb << "][" << i << "] " << cnt << "cost errerrerr" << std::endl;
 					exit(0);
 				}
 			}
