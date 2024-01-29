@@ -1,4 +1,45 @@
-I. 
+#FYalSAT
+
+## TAPA Flow
+
+1. Prerequisites
+
+- Alveo U250: https://www.xilinx.com/products/boards-and-kits/alveo/u250.html
+- Vitis 2022.2: https://www.xilinx.com/products/design-tools/vitis.html
+- TAPA: https://github.com/UCLA-VAST/tapa
+
+2. Host compilation
+
+```
+g++ -o fysat -O2 fysat.cpp host.cpp -ltapa -lfrt -lglog -lgflags
+```
+
+3. Run TAPA
+
+```
+source run_tapa.sh
+```
+
+4. Generate bitstream
+
+```
+bash run/fysat_generate_bitstream.sh
+```
+
+5. Run tests
+
+```
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/uf225-028.cnf 10 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/p12-k7-001.cnf 10 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/C3-2-31.cnf 10 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/Gen_16k.cnf 10 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/MVD_ADS_S6_6_5.cnf 10 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/MVD_ADS_S10_5_6.cnf 10 100000 10.0
+```
+
+
+
+## Vitis Flow (not up-to-date)
 
 
 1. Setup the environment
