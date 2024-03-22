@@ -233,7 +233,7 @@ int main(int argc, char** argv) {
 	//std::string rstr(argv[5]);
 	
 	int randseed = stoi(ss);
-	if (randseed == 0) {randseed = time(0);}
+	if (randseed == 0) {randseed = time(0) & 0xfff;}
 
 	int maxFlip = stoi(fstr);
 	if (maxFlip == 0) {maxFlip = MAXFLIP;}
@@ -294,6 +294,8 @@ int main(int argc, char** argv) {
 	answer_buf[0].param = 0;
 	answer_buf[0].flags = pc[3];
 */
+	auto init_start = std::chrono::steady_clock::now();
+
 	int k;
 	init(ClauseList[0], VarsOccList[0], cls_len_off, ol_len_off[0], fileName, numVars, numClauses, k);
 
@@ -303,6 +305,9 @@ int main(int argc, char** argv) {
 		std::copy(ol_len_off[0].begin(), ol_len_off[0].end(), std::back_inserter(ol_len_off[t]));
 	}
 	
+	auto init_end = std::chrono::steady_clock::now();
+	double init_time = std::chrono::duration_cast<std::chrono::nanoseconds>(init_end - init_start).count();
+	std::cout << "Init time: " << init_time*1e-9 << std::endl;
 
 	std::cout << "Done generating FPGA input data." << std::endl;
 	// exit(0);
@@ -314,6 +319,7 @@ int main(int argc, char** argv) {
 			tapa::write_only_mmaps<int,TPE_NUM>(Result),
 			numVars, numClauses, randseed, k, maxFlip, target_cycles
 	);
+
 	double exec_time = kernel_time_ns; 
 
 	int tot_try_num = 0;
@@ -348,10 +354,11 @@ int main(int argc, char** argv) {
 
 	double Mfs = (double)tot_flip_num / (exec_time * 1e-9);
 
-	std::cout << "Time: " << std::setw(19) << exec_time*1e-9 << std::endl;
+	std::cout << "FPGA ExecTime: " << std::setw(19) << exec_time*1e-9 << std::endl;
 	std::cout << "Tot tries: " << std::setw(14) << tot_try_num << std::endl;
 	std::cout << "Tot flips: " << std::setw(14) << tot_flip_num << std::endl;
 	std::cout << "Flips/s: " << std::setw(16) << Mfs << std::endl;
+
 
 	return EXIT_SUCCESS;
 }

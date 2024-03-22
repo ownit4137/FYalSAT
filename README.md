@@ -1,4 +1,4 @@
-#FYalSAT
+# FYalSAT
 
 ## TAPA Flow
 
@@ -29,12 +29,12 @@ bash run/fysat_generate_bitstream.sh
 5. Run tests
 
 ```
-./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/uf225-028.cnf 10 100000 10.0
-./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/p12-k7-001.cnf 10 100000 10.0
-./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/C3-2-31.cnf 10 100000 10.0
-./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/Gen_16k.cnf 10 100000 10.0
-./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/MVD_ADS_S6_6_5.cnf 10 100000 10.0
-./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin test/MVD_ADS_S10_5_6.cnf 10 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin ../test/uf225-028.cnf 0 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin ../test/p12-k7-001.cnf 0 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin ../test/C3-2-31.cnf 0 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin ../test/Gen_16k.cnf 0 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin ../test/MVD_ADS_S6_6_5.cnf 0 100000 10.0
+./fysat --bitstream=vitis_run_hw/fysat_xilinx_u250_gen3x16_xdma_4_1_202210_1.xclbin ../test/MVD_ADS_S10_5_6.cnf 0 100000 10.0
 ```
 
 
